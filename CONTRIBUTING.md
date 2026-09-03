@@ -41,13 +41,9 @@ feat: adiciona check-in de visita via geolocalização
 
 ## Rodando o Lint Localmente
 
-Antes de abrir o PR, rode o lint na pasta correspondente à sua mudança:
+Antes de abrir o PR, rode o lint no diretório do subprojeto que você alterou (se houver script `lint` no `package.json`):
 
-```bash
-cd backend && npm run lint
-cd frontend && npm run lint
-cd mobile && npm run lint
-```
+    cd <subprojeto> && npm run lint
 
 ## Labels
 
