@@ -61,7 +61,7 @@ git add .
 git commit -m "tipo: descrição curta do que foi feito"
 ```
 
-O commit também segue um padrão (Conventional Commits) — veja a tabela completa no [`CONTRIBUTING.md`](../CONTRIBUTING.md). Exemplos:
+O commit também segue um padrão (Conventional Commits) — veja a tabela completa no [`CONTRIBUTING.md`](../../CONTRIBUTING.md). Exemplos:
 
 ```bash
 git commit -m "feat: adiciona tela de check-in de visita"
