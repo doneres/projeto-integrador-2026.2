@@ -1,0 +1,46 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, frontend, mobile]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verifica se ${{ matrix.app }} já tem package.json
+        id: check
+        run: |
+          if [ -f "${{ matrix.app }}/package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - name: Instala dependências
+        if: steps.check.outputs.exists == 'true'
+        working-directory: ${{ matrix.app }}
+        run: npm ci
+
+      - name: Roda lint
+        if: steps.check.outputs.exists == 'true'
+        working-directory: ${{ matrix.app }}
+        run: npm run lint --if-present
