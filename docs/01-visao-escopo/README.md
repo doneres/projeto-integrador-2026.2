@@ -19,7 +19,7 @@ Sem um sistema estruturado, o acompanhamento da equipe externa depende de relato
 
 ## 4. Declaração de Visão
 
-> Para **coordenadores, supervisores e diretores comerciais** de empresas com equipe de vendas externa, que **precisam acompanhar rotas, visitas e metas de seus vendedores em campo**, o **[Nome do Projeto]** é um **sistema de gestão de força de vendas** que **oferece visibilidade em tempo real das visitas, inventário de PDV e desempenho comercial**. Diferente de controles manuais (planilhas, ligações, relatos informais), o sistema **automatiza a comprovação de visita via geolocalização, otimiza rotas e centraliza indicadores em um único painel**.
+> Para **coordenadores, supervisores e diretores comerciais** de empresas com equipe de vendas externa, que **precisam acompanhar rotas, visitas e metas de seus vendedores em campo**, o **AXIS — Account eXecution & Inventory Sales system** é um **sistema de gestão de força de vendas** que **oferece visibilidade em tempo real das visitas, inventário de PDV e desempenho comercial**. Diferente de controles manuais (planilhas, ligações, relatos informais), o sistema **automatiza a comprovação de visita via geolocalização, otimiza rotas e centraliza indicadores em um único painel**.
 
 ## 5. Público-Alvo / Atores
 
@@ -61,6 +61,7 @@ Sem um sistema estruturado, o acompanhamento da equipe externa depende de relato
 
 | Nome | Papel |
 |---|---|
-| Douglas, João Victor e Guilherme | Desenvolvimento |
-| 	
-ANIBAL VICENTE VIEIRA | Avaliação/orientação |
+| Douglas Cavalcanti | Desenvolvimento Backend (Node.js + TS) |
+| João Victor Castro | Desenvolvimento Mobile (React Native) |
+| Guilherme Breder | Desenvolvimento Frontend Web (React + TS) |
+| Prof. Aníbal Vicente Vieira | Avaliação / Orientação Docente |
