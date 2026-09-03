@@ -8,6 +8,7 @@ Este documento descreve o fluxo de trabalho adotado no projeto.
 - **`feature/nome-da-feature`** — para novas funcionalidades (ex: `feature/checkin-geolocalizacao`)
 - **`fix/nome-do-bug`** — para correções de bug
 - **`docs/nome-do-documento`** — para mudanças exclusivas de documentação
+- **`chore/nome-da-tarefa`** — para manutenção/config (ex: `chore/ajusta-workflow-lint`)
 
 ## Padrão de Commits
 
