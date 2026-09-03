@@ -18,10 +18,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verifica se ${{ matrix.app }} já tem package.json
+      - name: Verifica se ${{ matrix.app }} já tem package.json e package-lock.json
         id: check
         run: |
           if [ -f "${{ matrix.app }}/package.json" ]; then
+            if [ ! -f "${{ matrix.app }}/package-lock.json" ]; then
+              echo "Faltando ${{ matrix.app }}/package-lock.json (necessário para npm ci)" >&2
+              exit 1
+            fi
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
