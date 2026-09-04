@@ -36,6 +36,7 @@ O sistema é dividido em duas frentes: um **painel web**, usado pela gestão par
 | [Casos de Uso](./03-casos-de-uso/README.md) | Atores e casos de uso do sistema | ⬜ Pendente |
 | [Diagramas UML](./04-diagramas/README.md) | Casos de uso, classes, sequência | ⬜ Pendente |
 | [Modelo de Dados](./05-modelo-dados/README.md) | Entidades e relacionamentos (DER) | ⬜ Pendente |
+| [Fluxo de Trabalho](./06-fluxo-de-trabalho/README.md) | Como criar branch, commitar e abrir PR | ✅ Pronto |
 
 ## Como Contribuir com a Documentação
 
