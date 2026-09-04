@@ -1,0 +1,49 @@
+# === Dependências ===
+node_modules/
+**/node_modules/
+
+# === Variáveis de ambiente / segredos ===
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# === Builds ===
+dist/
+build/
+**/dist/
+**/build/
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Editor / SO ===
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# === React Native / Expo (mobile) ===
+mobile/.expo/
+mobile/.expo-shared/
+mobile/android/
+mobile/ios/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# === Coverage / testes ===
+coverage/
+**/coverage/
+
+# === Cache ===
+.cache/
+.eslintcache
+.turbo/
