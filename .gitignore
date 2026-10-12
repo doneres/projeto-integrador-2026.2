@@ -47,3 +47,6 @@ coverage/
 .cache/
 .eslintcache
 .turbo/
+
+# === Claude Code (configuração local de cada integrante) ===
+.claude/settings.local.json
