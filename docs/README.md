@@ -37,6 +37,7 @@ O sistema é dividido em duas frentes: um **painel web**, usado pela gestão par
 | [Diagramas UML](./04-diagramas/README.md) | Casos de uso, classes, sequência | ⬜ Pendente |
 | [Modelo de Dados](./05-modelo-dados/README.md) | Entidades e relacionamentos (DER) | ⬜ Pendente |
 | [Fluxo de Trabalho](./06-fluxo-de-trabalho/README.md) | Como criar branch, commitar e abrir PR | ✅ Pronto |
+| [Protótipo Navegável](./08-prototipo/README.md) | Protótipo do app mobile no Figma e fluxo de navegação | ✅ Pronto |
 
 ## Como Contribuir com a Documentação
 
