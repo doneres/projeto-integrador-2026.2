@@ -15,6 +15,8 @@ Este documento especifica os Requisitos Funcionais (RF) do sistema **AXIS (Accou
 
 ## 2. Matriz de Requisitos Funcionais
 
+> A coluna **Requisito Norteador** referencia os requisitos R1–R14 do Documento Norteador, descritos em [requisitos-norteadores.md](./requisitos-norteadores.md).
+
 ### Módulo 1: Autenticação, Perfis e Controle de Acesso (R2)
 
 | ID | Nome | Descrição | Plataforma | Prioridade | Requisito Norteador |
@@ -44,7 +46,7 @@ Este documento especifica os Requisitos Funcionais (RF) do sistema **AXIS (Accou
 |---|---|---|---|---|---|
 | **RF10** | Planejamento e Atribuição de Rotas | Permitir ao gestor criar uma rota diária/periódica selecionando clientes da carteira e atribuindo-a a um vendedor específico. | Web | **Must** | R3 |
 | **RF11** | Visualização da Rota do Dia | Exibir para o vendedor a lista ordenada de visitas programadas para o dia atual com status visual (*Pendente*, *Em Andamento*, *Concluída*, *Não Realizada*). | Mobile | **Must** | R1, R9 |
-| **RF12** | Check-in de Visita com Validação GPS | Permitir que o vendedor inicie a visita (Check-in), registrando data, hora e coordenadas de GPS. O sistema deve validar se o vendedor está dentro do raio permitido (ex: 150m) do cliente. | Mobile | **Must** | R4, R8 |
+| **RF12** | Check-in de Visita com Validação GPS | Permitir que o vendedor inicie a visita (Check-in), registrando data, hora e coordenadas de GPS. O sistema deve validar se o vendedor está dentro do raio permitido (20 m, ver RN01) do cliente. | Mobile | **Must** | R4, R8 |
 | **RF13** | Check-out com Registro de Desfecho | Permitir finalizar a visita (Check-out) registrando o horário de saída, resumo da visita, desfecho (*Venda Realizada*, *Apenas Auditoria*, *Cliente Fechado*, etc.) e justificativa caso não realizada. | Mobile | **Must** | R3 |
 | **RF14** | Operação Offline de Visitas | Permitir o registro de check-in, auditoria e pedidos mesmo sem conexão com a internet, armazenando os dados localmente no dispositivo para sincronização posterior. | Mobile | **Must** | R5 |
 | **RF15** | Visualização de Rota no Mapa | Exibir o trajeto e os pontos de visitação do dia sobre um mapa interativo utilizando serviço externo de mapas (Google Maps / Mapbox / OpenStreetMap). | Web / Mobile | **Should** | R7 |

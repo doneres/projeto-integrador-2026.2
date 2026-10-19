@@ -1,6 +1,6 @@
 # Requisitos Não Funcionais — AXIS
 
-Este documento especifica os Requisitos Não Funcionais (RNF) do sistema **AXIS (Account eXecution & Inventory Sales system)**, organizados por atributos de qualidade de software segundo a norma ISO/IEC 25010 e em total conformidade com os requisitos técnicos do Documento Norteador (R1 a R14).
+Este documento especifica os Requisitos Não Funcionais (RNF) do sistema **AXIS (Account eXecution & Inventory Sales system)**, organizados por atributos de qualidade de software segundo a norma ISO/IEC 25010 e em total conformidade com os requisitos técnicos do Documento Norteador (R1 a R14), descritos em [requisitos-norteadores.md](./requisitos-norteadores.md).
 
 ---
 
