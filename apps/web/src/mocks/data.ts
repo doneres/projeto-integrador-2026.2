@@ -6,7 +6,7 @@ export const clientesMock: Cliente[] = [
     id: '0192f4a0-0000-7000-8000-000000000001',
     razaoSocial: 'Mercadinho Exemplo Norte Ltda',
     nomeFantasia: 'Mercadinho Exemplo Norte',
-    documento: '12345678000100',
+    documento: '12345678000195',
     telefone: '62999990001',
     contato: 'Ana (gerente)',
     endereco: {
@@ -27,7 +27,7 @@ export const clientesMock: Cliente[] = [
     id: '0192f4a0-0000-7000-8000-000000000002',
     razaoSocial: 'Padaria Modelo Sul Ltda',
     nomeFantasia: 'Padaria Modelo Sul',
-    documento: '98765432000100',
+    documento: '98765432000198',
     telefone: '6233330002',
     contato: 'Carlos (proprietário)',
     endereco: {

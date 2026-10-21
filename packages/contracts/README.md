@@ -33,12 +33,38 @@ O pacote é consumido direto do código-fonte TypeScript, sem etapa de build.
 | Dinheiro | Inteiro em centavos | `centavosSchema` |
 | Paginação | `?pagina=1&porPagina=20` (máx. 100) → `{ itens, total, pagina, porPagina }` | `paginacaoSchema`, `paginaDe` |
 | Erros | Problem Details (RFC 9457) com `codigo` e `erros` | `problemaSchema`, `errosDeValidacao` |
-| CPF/CNPJ, CEP, telefone | Só dígitos; a máscara é da interface | `documentoSchema`, `cepSchema`, `telefoneSchema` |
+| CPF/CNPJ | Sem máscara, com dígitos verificadores conferidos; o CNPJ aceita o formato alfanumérico emitido desde julho de 2026 | `documentoSchema`, `normalizarDocumento` |
+| CEP e telefone | Só dígitos; a máscara é da interface | `cepSchema`, `telefoneSchema`, `apenasDigitos` |
+
+## Endpoints (provisórios)
+
+Todas as rotas, menos o login, exigem `Authorization: Bearer <token>` e respondem `401 NAO_AUTENTICADO` sem um token válido.
+
+| Método | Caminho | Entrada | Respostas |
+|---|---|---|---|
+| POST | `/v1/auth/login` | `loginSchema` | 200 `sessaoSchema` · 401 `CREDENCIAIS_INVALIDAS` |
+| GET | `/v1/clientes` | `filtrosClientesSchema` (query) | 200 `paginaDe(clienteSchema)` |
+| GET | `/v1/clientes/{id}` | | 200 `clienteSchema` · 404 `NAO_ENCONTRADO` |
+| POST | `/v1/clientes` | `dadosClienteSchema` | 201 `clienteSchema` · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` |
+| PUT | `/v1/clientes/{id}` | `dadosClienteSchema` | 200 `clienteSchema` · 404 · 409 · 422 |
+| PATCH | `/v1/clientes/{id}/status` | `alteracaoStatusClienteSchema` | 200 `clienteSchema` · 404 |
+
+## Códigos de erro
+
+| Código | Status | Quando |
+|---|---|---|
+| `VALIDACAO` | 422 | Dados de entrada fora do contrato; `erros` lista campo e mensagem |
+| `NAO_AUTENTICADO` | 401 | Sem token, token inválido ou sessão expirada |
+| `CREDENCIAIS_INVALIDAS` | 401 | E-mail/matrícula ou senha incorretos no login |
+| `SEM_PERMISSAO` | 403 | O perfil do usuário não pode fazer a ação |
+| `NAO_ENCONTRADO` | 404 | O recurso não existe |
+| `DOCUMENTO_JA_CADASTRADO` | 409 | Já existe cliente com o mesmo CPF/CNPJ |
 
 ## Entidades
 
 | Entidade | Situação |
 |---|---|
+| `Usuario` e `Sessao` | Provisórias: perfis da proposta da issue #20 |
 | `Cliente` | Provisória: campos da RF05/RF06, a confirmar na issue #26 |
 
 ## Testes
