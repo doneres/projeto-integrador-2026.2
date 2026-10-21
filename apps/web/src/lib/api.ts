@@ -1,5 +1,6 @@
 import { type ErroDeCampo, problemaSchema } from '@axis/contracts'
 import type { ZodType } from 'zod'
+import { obterSessao, sessaoValida } from './sessao'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -41,6 +42,10 @@ export async function apiFetch<T>(
   cabecalhos.set('Accept', 'application/json, application/problem+json')
   if (init?.body !== undefined && !cabecalhos.has('Content-Type')) {
     cabecalhos.set('Content-Type', 'application/json')
+  }
+  const sessao = obterSessao()
+  if (sessaoValida(sessao) && !cabecalhos.has('Authorization')) {
+    cabecalhos.set('Authorization', `Bearer ${sessao.token}`)
   }
 
   let resposta: Response

@@ -28,6 +28,15 @@ Abra o endereço mostrado no terminal (normalmente `http://localhost:5173`).
 
 Em desenvolvimento, `.env.development` liga a API simulada (`VITE_USE_MOCKS=true`), então o painel funciona sem o backend. Para apontar para a API real, crie `.env.local` a partir de `.env.example`.
 
+### Usuários de teste (API simulada)
+
+| Perfil | E-mail | Matrícula | Senha |
+|---|---|---|---|
+| Coordenador | `gestor@axis.example` | `1001` | `axis-demo-2026` |
+| Vendedor | `vendedor@axis.example` | `2001` | `axis-demo-2026` |
+
+São dados fictícios que só existem na API simulada (`src/mocks/data.ts`). O vendedor é barrado no painel, que é da gestão (RF02).
+
 ## Scripts
 
 Dentro de `apps/web` (ou na raiz, com `pnpm --filter @axis/web <script>`):
@@ -42,14 +51,24 @@ Dentro de `apps/web` (ou na raiz, com `pnpm --filter @axis/web <script>`):
 
 Lint e formatação rodam na raiz: `pnpm lint` verifica e `pnpm lint:fix` corrige.
 
+## Sessão e segurança
+
+- O login devolve um token e o instante em que ele expira. O painel guarda os dois no `localStorage` até a expiração ou até o usuário clicar em **Sair** (RF04).
+- As rotas internas exigem sessão válida. Se a sessão expira ou a API responde 401, o painel volta ao login e, depois de entrar, retorna à página em que o usuário estava.
+- Risco conhecido do `localStorage`: um script malicioso injetado na página (XSS) conseguiria ler o token. O React escapa todo o conteúdo exibido e o painel não usa HTML bruto. A alternativa, um cookie `httpOnly`, depende da API e entra na decisão da issue #20.
+
+## Telas
+
+O rascunho de baixa fidelidade das telas da beta está na página **Painel web — rascunho** do arquivo AXIS no Figma.
+
 ## Estrutura
 
 ```
 src/
   app/          rotas (router.tsx)
-  components/   componentes compartilhados (layout)
-  features/     código por domínio (ex.: clientes: queries da API)
-  lib/          cliente HTTP (apiFetch), mensagens de erro e TanStack Query
+  components/   layout e componentes de interface (components/ui)
+  features/     código por domínio: auth (login e rota protegida) e clientes
+  lib/          cliente HTTP (apiFetch), sessão, mensagens de erro e TanStack Query
   mocks/        API simulada (MSW): handlers e dados fictícios
   pages/        telas
 public/

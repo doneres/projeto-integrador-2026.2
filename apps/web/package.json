@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@axis/contracts": "workspace:*",
+    "@hookform/resolvers": "^5.9.2",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.104.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-hook-form": "^7.90.0",
     "react-router": "^8.5.0",
     "tailwindcss": "^4.3.3",
     "zod": "catalog:"

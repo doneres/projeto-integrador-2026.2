@@ -1,4 +1,25 @@
-import type { Cliente } from '@axis/contracts'
+import type { Cliente, Usuario } from '@axis/contracts'
+
+/** Senha fictícia aceita pela API simulada para os usuários de teste. Só existe no MSW. */
+export const SENHA_DEMO = 'axis-demo-2026'
+
+// Usuários fictícios. O vendedor serve para testar o bloqueio do painel (RF02).
+export const usuariosMock: Usuario[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a1',
+    nome: 'Maria Souza',
+    email: 'gestor@axis.example',
+    matricula: '1001',
+    perfil: 'coordenador',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a2',
+    nome: 'Bruno Exemplo',
+    email: 'vendedor@axis.example',
+    matricula: '2001',
+    perfil: 'vendedor',
+  },
+]
 
 // Dados fictícios para desenvolvimento. Não usar dados reais de clientes aqui.
 export const clientesMock: Cliente[] = [

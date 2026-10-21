@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { ApiError, apiFetch, SEM_RESPOSTA } from './api'
+import { encerrarSessao, iniciarSessao } from './sessao'
 
 const schema = z.object({ ok: z.boolean() })
 
@@ -10,6 +11,7 @@ function respostaJson(corpo: unknown, status = 200, tipo = 'application/json') {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  encerrarSessao()
 })
 
 describe('apiFetch', () => {
@@ -26,6 +28,26 @@ describe('apiFetch', () => {
     const cabecalhos = new Headers(fetchSimulado.mock.calls[0]?.[1]?.headers)
     expect(cabecalhos.has('Content-Type')).toBe(false)
     expect(cabecalhos.get('Accept')).toContain('application/json')
+  })
+
+  it('envia o token da sessão no cabeçalho Authorization', async () => {
+    const fetchSimulado = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(respostaJson({ ok: true }))
+    iniciarSessao({
+      token: 'abc',
+      expiraEm: '2999-01-01T00:00:00Z',
+      usuario: {
+        id: '0192f4a0-0000-7000-8000-0000000000a1',
+        nome: 'Maria Souza',
+        email: 'gestor@axis.example',
+        matricula: '1001',
+        perfil: 'coordenador',
+      },
+    })
+    await apiFetch('/v1/teste', schema)
+    const cabecalhos = new Headers(fetchSimulado.mock.calls[0]?.[1]?.headers)
+    expect(cabecalhos.get('Authorization')).toBe('Bearer abc')
   })
 
   it('converte um Problem Details (RFC 9457) em ApiError', async () => {

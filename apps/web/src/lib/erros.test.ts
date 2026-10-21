@@ -13,6 +13,15 @@ describe('mensagemDeErro', () => {
     expect(mensagemDeErro(erro)).toMatch(/Entre novamente/)
   })
 
+  it('usa a mensagem da API quando o login tem credenciais erradas', () => {
+    const erro = new ApiError({
+      status: 401,
+      codigo: 'CREDENCIAIS_INVALIDAS',
+      mensagem: 'E-mail/matrícula ou senha incorretos.',
+    })
+    expect(mensagemDeErro(erro)).toBe('E-mail/matrícula ou senha incorretos.')
+  })
+
   it('usa a mensagem da API nos erros de validação', () => {
     const erro = new ApiError({
       status: 422,

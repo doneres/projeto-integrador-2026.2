@@ -9,8 +9,6 @@ export function ClientesPage() {
 
   return (
     <section>
-      <h1 className="text-2xl font-bold">Clientes</h1>
-
       {isPending && <p className="mt-4 text-sm text-text-muted">Carregando clientes...</p>}
 
       {isError && (
