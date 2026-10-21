@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+  Tokens visuais do painel AXIS. Todas as cores e fontes do painel saem daqui.
+
+  Base atual: protótipo mobile no Figma (preto, branco, cinzas e Roboto).
+  PENDENTE: a paleta de marca do deck da N1 (azul-marinho, verde-menta, azul)
+  ainda não tem valores hex confirmados. Quando houver, trocar só os valores abaixo.
+*/
+@theme {
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand: #000000;
+  --color-brand-foreground: #ffffff;
+  --color-surface: #ffffff;
+  --color-text: #000000;
+  --color-text-muted: rgb(0 0 0 / 0.5);
+  --color-border: rgb(0 0 0 / 0.1);
+  --color-muted: rgb(0 0 0 / 0.05);
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
