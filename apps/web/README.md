@@ -4,11 +4,13 @@ Painel usado pela gestão (coordenadores, supervisores e diretores) para cadastr
 
 ## Stack
 
-- Vite + React + TypeScript
+- Vite + React + TypeScript (modo estrito)
 - React Router (rotas)
 - TanStack Query (dados vindos da API)
+- Contrato da API em [`@axis/contracts`](../../packages/contracts/README.md) (schemas Zod)
 - Tailwind CSS (estilo, com tokens em `src/index.css`)
 - MSW (API simulada em desenvolvimento)
+- Vitest (testes)
 - Biome (lint e formatação, configurado na raiz do repositório)
 
 ## Como rodar
@@ -35,6 +37,7 @@ Dentro de `apps/web` (ou na raiz, com `pnpm --filter @axis/web <script>`):
 | `pnpm dev` | Servidor de desenvolvimento |
 | `pnpm build` | Checagem de tipos (`tsc`) e build de produção |
 | `pnpm typecheck` | Só a checagem de tipos |
+| `pnpm test` | Testes automatizados (Vitest) |
 | `pnpm preview` | Serve o build de produção localmente |
 
 Lint e formatação rodam na raiz: `pnpm lint` verifica e `pnpm lint:fix` corrige.
@@ -45,18 +48,22 @@ Lint e formatação rodam na raiz: `pnpm lint` verifica e `pnpm lint:fix` corrig
 src/
   app/          rotas (router.tsx)
   components/   componentes compartilhados (layout)
-  features/     código por domínio (ex.: clientes: tipos e queries)
-  lib/          cliente HTTP e configuração do TanStack Query
+  features/     código por domínio (ex.: clientes: queries da API)
+  lib/          cliente HTTP (apiFetch), mensagens de erro e TanStack Query
   mocks/        API simulada (MSW): handlers e dados fictícios
   pages/        telas
 public/
   mockServiceWorker.js   worker do MSW (gerado por `msw init`, não editar)
 ```
 
+Os testes ficam ao lado do arquivo testado (`*.test.ts`).
+
 ## Convenções
 
-- Chamadas à API passam por `apiFetch` (`src/lib/api.ts`) e ficam no `queries.ts` de cada feature.
-- Os handlers da API simulada seguem o contrato da API (`/v1/...`).
+- Toda chamada à API passa por `apiFetch` (`src/lib/api.ts`), que valida a resposta com o schema do contrato. Qualquer falha vira `ApiError`: sem conexão, erro HTTP no formato Problem Details (RFC 9457) ou resposta fora do contrato.
+- As telas mostram erros com `mensagemDeErro` (`src/lib/erros.ts`) e tratam os estados de carregamento, erro e lista vazia.
+- Erros 4xx não são repetidos automaticamente; falhas de conexão e erros 5xx são tentados de novo até duas vezes.
+- As queries de cada domínio ficam em `features/<dominio>/queries.ts`.
+- Os handlers da API simulada seguem o contrato (`/v1/...`), e os dados em `src/mocks/data.ts` são fictícios e validados contra o contrato nos testes.
 - Cores e fontes ficam só em `src/index.css`. A paleta da marca ainda está pendente.
-- Os dados em `src/mocks/data.ts` são fictícios.
 - Nomes: termos do domínio em português (`cliente`, `rota`), termos técnicos de bibliotecas em inglês (`query`, `handler`, `schema`).
