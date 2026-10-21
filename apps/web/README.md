@@ -61,6 +61,13 @@ Lint e formatação rodam na raiz: `pnpm lint` verifica e `pnpm lint:fix` corrig
 
 O rascunho de baixa fidelidade das telas da beta está na página **Painel web — rascunho** do arquivo AXIS no Figma.
 
+## O que já funciona
+
+- **Login e sessão:** e-mail ou matrícula (RF01), perfis da gestão (RF02) e Sair (RF04).
+- **Layout base:** menu lateral, cabeçalho com o usuário e menu recolhível em tela pequena.
+- **Clientes (RF05, RF06):** lista com busca por nome ou CPF/CNPJ, filtros de status, tipo e bairro na URL e paginação; cadastro e edição com validação de CPF/CNPJ (inclusive o CNPJ alfanumérico); inativar e reativar com confirmação na própria tela.
+- **CEP (RF07):** preenche o endereço pelo ViaCEP, com a BrasilAPI de reserva e 5 s por serviço; se nenhum responder, o endereço é preenchido à mão.
+
 ## Estrutura
 
 ```
