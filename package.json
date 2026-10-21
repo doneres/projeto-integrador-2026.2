@@ -1,0 +1,21 @@
+{
+  "name": "axis",
+  "private": true,
+  "description": "AXIS: gestão de força de vendas externa (Projeto Integrador PUC Goiás 2026/2)",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @axis/web dev",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "build": "pnpm -r --if-present run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "typescript": "catalog:"
+  }
+}

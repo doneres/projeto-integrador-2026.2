@@ -16,10 +16,27 @@ O projeto é dividido em duas frentes: um **painel web**, usado pela gestão par
 
 ## Estrutura do Repositório
 
-- `backend/` — API REST
-- `frontend/` — Painel web (gestão)
-- `mobile/` — App do vendedor
+Monorepo com pnpm workspaces (decisão registrada na issue #21):
+
+- `apps/api/` — API REST (Fastify)
+- `apps/web/` — Painel web de gestão (React)
+- `apps/mobile/` — App do vendedor (Expo)
+- `packages/contracts/` — Contrato da API: schemas Zod compartilhados pelas três frentes
 - `docs/` — Documentação do projeto (visão, requisitos, casos de uso, diagramas)
+
+## Como Rodar
+
+Pré-requisitos: Node.js 24 LTS (versão em `.nvmrc`) e pnpm (`npm install -g pnpm`).
+
+```bash
+pnpm install     # instala as dependências de todas as frentes
+pnpm dev:web     # sobe o painel web em modo de desenvolvimento
+pnpm lint        # lint e formatação (Biome)
+pnpm typecheck   # checagem de tipos
+pnpm test        # testes automatizados
+```
+
+Instruções de cada frente ficam no README da própria pasta (ex.: [`apps/web`](./apps/web/README.md)).
 
 ## Materias
 

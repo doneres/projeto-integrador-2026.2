@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Versões únicas para o monorepo inteiro. Nos package.json, use "catalog:".
+catalog:
+  typescript: ~6.0.3

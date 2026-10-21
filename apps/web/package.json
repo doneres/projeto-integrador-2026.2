@@ -1,12 +1,12 @@
 {
-  "name": "web",
+  "name": "@axis/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "typecheck": "tsc -b",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -23,8 +23,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "msw": "^3.0.3",
-    "oxlint": "^1.88.0",
-    "typescript": "~6.0.3",
+    "typescript": "catalog:",
     "vite": "^8.3.4"
   },
   "msw": {

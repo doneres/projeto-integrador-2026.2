@@ -1,4 +1,4 @@
-import { delay, http, HttpResponse } from 'msw'
+import { delay, HttpResponse, http } from 'msw'
 import { clientesMock } from './data'
 
 // Cada handler imita um endpoint do contrato da API (/v1/...).

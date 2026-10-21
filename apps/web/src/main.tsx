@@ -13,8 +13,13 @@ async function enableMocking() {
   await worker.start({ onUnhandledFrame: 'bypass' })
 }
 
+const raiz = document.getElementById('root')
+if (!raiz) {
+  throw new Error('Elemento #root não encontrado no index.html')
+}
+
 enableMocking().then(() => {
-  createRoot(document.getElementById('root')!).render(
+  createRoot(raiz).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />

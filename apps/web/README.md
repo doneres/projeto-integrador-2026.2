@@ -7,18 +7,19 @@ Painel usado pela gestão (coordenadores, supervisores e diretores) para cadastr
 - Vite + React + TypeScript
 - React Router (rotas)
 - TanStack Query (dados vindos da API)
-- Tailwind CSS (estilo, tokens em `src/index.css`)
+- Tailwind CSS (estilo, com tokens em `src/index.css`)
 - MSW (API simulada em desenvolvimento)
-- oxlint (lint)
+- Biome (lint e formatação, configurado na raiz do repositório)
 
 ## Como rodar
 
-Pré-requisito: Node.js 20.19+ ou 22.12+.
+Pré-requisitos: Node.js 24 LTS e pnpm (veja o README da raiz).
+
+Na raiz do repositório:
 
 ```bash
-cd apps/web
-npm install
-npm run dev
+pnpm install
+pnpm dev:web
 ```
 
 Abra o endereço mostrado no terminal (normalmente `http://localhost:5173`).
@@ -27,12 +28,16 @@ Em desenvolvimento, `.env.development` liga a API simulada (`VITE_USE_MOCKS=true
 
 ## Scripts
 
+Dentro de `apps/web` (ou na raiz, com `pnpm --filter @axis/web <script>`):
+
 | Comando | O que faz |
 |---|---|
-| `npm run dev` | Servidor de desenvolvimento |
-| `npm run build` | Checagem de tipos (`tsc`) e build de produção |
-| `npm run lint` | Lint com oxlint |
-| `npm run preview` | Serve o build de produção localmente |
+| `pnpm dev` | Servidor de desenvolvimento |
+| `pnpm build` | Checagem de tipos (`tsc`) e build de produção |
+| `pnpm typecheck` | Só a checagem de tipos |
+| `pnpm preview` | Serve o build de produção localmente |
+
+Lint e formatação rodam na raiz: `pnpm lint` verifica e `pnpm lint:fix` corrige.
 
 ## Estrutura
 
@@ -50,7 +55,8 @@ public/
 
 ## Convenções
 
-- Chamadas à API passam por `apiFetch` (`src/lib/api.ts`) e ficam em `queries.ts` de cada feature.
+- Chamadas à API passam por `apiFetch` (`src/lib/api.ts`) e ficam no `queries.ts` de cada feature.
 - Os handlers da API simulada seguem o contrato da API (`/v1/...`).
-- Cores e fontes ficam só em `src/index.css`. A paleta de marca ainda está pendente.
-- Dados em `src/mocks/data.ts` são fictícios.
+- Cores e fontes ficam só em `src/index.css`. A paleta da marca ainda está pendente.
+- Os dados em `src/mocks/data.ts` são fictícios.
+- Nomes: termos do domínio em português (`cliente`, `rota`), termos técnicos de bibliotecas em inglês (`query`, `handler`, `schema`).
