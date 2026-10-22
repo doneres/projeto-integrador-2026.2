@@ -29,10 +29,10 @@ yarn-error.log*
 Thumbs.db
 
 # === React Native / Expo (mobile) ===
-mobile/.expo/
-mobile/.expo-shared/
-mobile/android/
-mobile/ios/
+apps/mobile/.expo/
+apps/mobile/.expo-shared/
+apps/mobile/android/
+apps/mobile/ios/
 *.jks
 *.p8
 *.p12
