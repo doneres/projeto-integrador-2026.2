@@ -1,0 +1,21 @@
+{
+  "name": "@axis/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Contrato da API do AXIS: schemas Zod compartilhados por api, web e mobile",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

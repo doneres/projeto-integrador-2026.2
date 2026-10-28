@@ -1,4 +1,4 @@
-name: Lint
+name: CI
 
 on:
   pull_request:
@@ -7,44 +7,33 @@ on:
     branches: [main]
 
 jobs:
-  lint:
-    name: Lint (${{ matrix.app }})
+  verificar:
+    name: Lint, tipos, testes e build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [backend, frontend, mobile]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verifica se ${{ matrix.app }} já tem package.json e package-lock.json
-        id: check
-        run: |
-          if [ -f "${{ matrix.app }}/package.json" ]; then
-            if [ ! -f "${{ matrix.app }}/package-lock.json" ]; then
-              echo "Faltando ${{ matrix.app }}/package-lock.json (necessário para npm ci)" >&2
-              exit 1
-            fi
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Instala o pnpm (versão do campo packageManager)
+        uses: pnpm/action-setup@v4
 
-      - name: Setup Node.js
-        if: steps.check.outputs.exists == 'true'
+      - name: Instala o Node.js (versão do .nvmrc)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+          node-version-file: .nvmrc
+          cache: pnpm
 
       - name: Instala dependências
-        if: steps.check.outputs.exists == 'true'
-        working-directory: ${{ matrix.app }}
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Roda lint
-        if: steps.check.outputs.exists == 'true'
-        working-directory: ${{ matrix.app }}
-        run: npm run lint --if-present
+      - name: Lint e formatação (Biome)
+        run: pnpm exec biome ci .
+
+      - name: Checagem de tipos
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

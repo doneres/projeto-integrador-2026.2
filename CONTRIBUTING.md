@@ -37,13 +37,19 @@ feat: adiciona check-in de visita via geolocalização
 3. Abra um Pull Request para a `main`, vinculando a issue relacionada (`Closes #numero`)
 4. Aguarde pelo menos 1 aprovação de outro integrante
 5. Resolva todos os comentários da revisão antes do merge
-6. Após aprovado, faça o merge (o CI de lint precisa passar)
+6. Após aprovado, faça o merge (o CI precisa passar)
 
-## Rodando o Lint Localmente
+## Verificando Localmente
 
-Antes de abrir o PR, rode o lint no diretório do subprojeto que você alterou (se houver script `lint` no `package.json`):
+O repositório é um monorepo com pnpm (Node.js 24, versão em `.nvmrc`). Antes de abrir o PR, rode na raiz:
 
-    cd <subprojeto> && npm run lint
+    pnpm lint        # Biome: lint e formatação
+    pnpm typecheck   # checagem de tipos de todas as frentes
+    pnpm test        # testes automatizados
+
+Para corrigir a formatação e organizar os imports automaticamente: `pnpm lint:fix`.
+
+O CI roda essas mesmas verificações, mais o build, em todo PR para a `main`.
 
 ## Labels
 
