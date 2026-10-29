@@ -35,7 +35,7 @@ O sistema é dividido em duas frentes: um **painel web**, usado pela gestão par
 | [Requisitos](./02-requisitos/README.md) | Requisitos funcionais e não funcionais | ⬜ Pendente |
 | [Casos de Uso](./03-casos-de-uso/README.md) | Atores e casos de uso do sistema | ⬜ Pendente |
 | [Diagramas UML](./04-diagramas/README.md) | Casos de uso, classes, sequência | ⬜ Pendente |
-| [Modelo de Dados](./05-modelo-dados/README.md) | Entidades e relacionamentos (DER) | ⬜ Pendente |
+| [Modelo de Dados](./05-modelo-dados/README.md) | Entidades, atributos, estados e relacionamentos (decisão da issue #26) | ✅ Pronto |
 | [Fluxo de Trabalho](./06-fluxo-de-trabalho/README.md) | Como criar branch, commitar e abrir PR | ✅ Pronto |
 | [Protótipo Navegável](./08-prototipo/README.md) | Protótipo do app mobile no Figma e fluxo de navegação | ✅ Pronto |
 
