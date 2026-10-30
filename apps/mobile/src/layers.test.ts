@@ -23,7 +23,7 @@ function sourceFiles(dir: string): string[] {
 
 function importsOf(file: string): string[] {
   const text = readFileSync(file, 'utf8')
-  return [...text.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1] as string)
+  return [...text.matchAll(/(?:from|import)\s+['"]([^'"]+)['"]/g)].map((match) => match[1] as string)
 }
 
 /** Camada de src/ para a qual o import aponta, ou undefined se não for um import interno. */
@@ -46,5 +46,12 @@ describe('camadas do app', () => {
         .map(({ file: f, target }) => `${f.slice(SRC.length + 1)} importa ${target}`),
     )
     expect(violations).toEqual([])
+  })
+})
+
+describe('pastas de src/', () => {
+  it('toda pasta nova precisa ser declarada em allowed (e ter suas dependências definidas)', () => {
+    const folders = readdirSync(SRC).filter((name) => statSync(join(SRC, name)).isDirectory())
+    expect(folders.sort()).toEqual(Object.keys(allowed).sort())
   })
 })

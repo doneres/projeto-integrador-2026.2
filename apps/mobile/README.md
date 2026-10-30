@@ -72,7 +72,7 @@ src/
 
 A dependência aponta num sentido só: `screens → hooks → repositories/services`. `src/layers.test.ts` falha se uma camada importar de onde não deve.
 
-Termos do domínio e rotas do `app/` ficam em português; o código fica em inglês (ADR 0001). O alias `@/` aponta para `src/`.
+Textos da interface e caminhos de `app/` ficam em português; o código (nomes, tipos, funções) fica em inglês (ADR 0001). O alias `@/` aponta para `src/`.
 
 ## Acessibilidade (RNF03)
 

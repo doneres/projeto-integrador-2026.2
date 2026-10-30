@@ -20,7 +20,7 @@ export function ListItem({
       accessibilityLabel={accessibilityLabel}
       accessibilityRole={accessibilityRole}
       onPress={onPress}
-      style={{ minHeight: MIN_TOUCH_TARGET }}
+      style={{ minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET }}
       className="justify-center rounded-lg bg-surface px-4 py-3"
     >
       <View>

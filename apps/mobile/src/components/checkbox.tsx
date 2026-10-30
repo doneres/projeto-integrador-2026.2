@@ -27,7 +27,7 @@ export function Checkbox({
       className="flex-row items-center gap-3 py-2"
     >
       <View
-        className={`h-6 w-6 items-center justify-center rounded border-2 border-border ${checked ? 'border-primary bg-primary' : 'bg-background'}`}
+        className={`h-6 w-6 items-center justify-center rounded border-2 ${checked ? 'border-primary bg-primary' : 'border-border bg-background'}`}
       >
         {checked ? <Check size={16} color={colors.onPrimary} strokeWidth={3} /> : null}
       </View>
