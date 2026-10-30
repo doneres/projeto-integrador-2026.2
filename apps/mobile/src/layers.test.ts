@@ -23,7 +23,9 @@ function sourceFiles(dir: string): string[] {
 
 function importsOf(file: string): string[] {
   const text = readFileSync(file, 'utf8')
-  return [...text.matchAll(/(?:from|import)\s+['"]([^'"]+)['"]/g)].map((match) => match[1] as string)
+  return [...text.matchAll(/(?:from|import)\s+['"]([^'"]+)['"]/g)].map(
+    (match) => match[1] as string,
+  )
 }
 
 /** Camada de src/ para a qual o import aponta, ou undefined se não for um import interno. */
