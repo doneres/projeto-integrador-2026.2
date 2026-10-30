@@ -12,7 +12,7 @@ O projeto é dividido em duas frentes: um **painel web**, usado pela gestão par
 
 - **Backend:** Node.js + TypeScript
 - **Frontend Web:** React + TypeScript
-- **Mobile:** React Native
+- **Mobile:** Expo (React Native)
 
 ## Estrutura do Repositório
 

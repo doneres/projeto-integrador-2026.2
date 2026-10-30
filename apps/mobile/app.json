@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "AXIS",
+    "slug": "axis",
+    "scheme": "axis",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "br.edu.pucgoias.axis"
+    },
+    "ios": {
+      "bundleIdentifier": "br.edu.pucgoias.axis"
+    },
+    "plugins": ["expo-router", ["expo-build-properties", { "android": { "minSdkVersion": 26 } }]],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

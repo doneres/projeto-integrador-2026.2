@@ -2,6 +2,12 @@ packages:
   - apps/*
   - packages/*
 
+# Scripts de instalação que o pnpm 12 não roda sem aprovação. Estes dois são
+# opcionais (binários prontos vêm em pacotes por plataforma), então ficam negados.
+allowBuilds:
+  '@parcel/watcher': false
+  unrs-resolver: false
+
 # Versões únicas para o monorepo inteiro. Nos package.json, use "catalog:".
 catalog:
   typescript: ~6.0.3
