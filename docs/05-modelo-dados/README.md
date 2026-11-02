@@ -59,7 +59,7 @@ Convenções: todo `id` é UUID v7; toda tabela tem `createdAt` e `updatedAt`; i
 | `registration` | matrícula, único; login por e-mail ou matrícula |
 | `passwordHash` | argon2 |
 | `role` | `seller` \| `coordinator` \| `director` \| `administrator` |
-| `coordinatorId` | FK `user`; obrigatório e só permitido quando `role = seller`, e deve apontar para um `coordinator` |
+| `coordinatorId` | FK `user`; obrigatório e só permitido quando `role = seller`, e deve apontar para um `coordinator`. O banco garante as duas pontas: um coordenador que tem vendedores não muda de perfil |
 | `active` | conta inativa perde o acesso na hora (conferido a cada requisição) |
 
 Usuário nunca é excluído, só desativado.
@@ -224,4 +224,4 @@ Linha única: `checkinRadiusMeters` (padrão 100), `scoreWeightRevenue` (50), `s
 ## Pendências para outros tickets
 
 - **Sync offline (#27):** upload de `photo`; o que o servidor faz com pedido ou auditoria cujo check-in não chegou (rejeitar ou marcar inconsistente); ordem da fila por `seq` local (RN05).
-- **Contrato da API:** `packages/contracts` e o web usam nomes em português e `tipo`/`status` simples; precisam ser renomeados para este modelo (implementação, fora do mapa).
+- **Contrato da API:** `packages/contracts` já tem os schemas em inglês deste modelo (`user`, `customer`, `route`, `visit`, paginação) ao lado dos antigos em português. Falta o web migrar para eles e a etapa de remoção dos antigos, inclusive o Problem Details (`codigo`, `erros`), que ainda tem campos em português.

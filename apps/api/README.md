@@ -43,8 +43,9 @@ O ambiente é validado com Zod ao subir. Se faltar variável ou alguma for invá
 
 - `POST /v1/auth/login` recebe `{ identifier, password }` (e-mail ou matrícula) e devolve `{ token, expiresAt, user }`. O token é um JWT HS256 de 8 horas; não há refresh token nem autocadastro. A senha fica guardada com argon2id.
 - Rotas protegidas usam `preHandler: app.authenticate` e recebem o usuário e o perfil em `request.user`. A cada requisição a API busca a conta no banco: se não existir ou estiver desativada, responde `401 NAO_AUTENTICADO`, mesmo com o token ainda válido. `GET /v1/me` é a rota de exemplo.
+- O login é limitado por endereço (padrão em `DEFAULT_LOGIN_RATE_LIMIT`: 30 tentativas por minuto, contando acertos e erros) (`429 MUITAS_TENTATIVAS`). Atrás do proxy do Render, `trustProxy: 1` (ligado quando `NODE_ENV=production`) faz o endereço vir do `X-Forwarded-For`, confiando só nesse salto para o cliente não forjar o cabeçalho. O contador fica na memória de cada instância e zera a cada deploy.
 - Conta inexistente, senha errada e conta desativada respondem o mesmo `401 CREDENCIAIS_INVALIDAS`, para não revelar se o e-mail ou a matrícula existe.
-- Usuário só é criado por `createUser` ([`src/users/create-user.ts`](./src/users/create-user.ts)), usado pelo seed e pelos testes; a tela do Administrador vem em outro ticket.
+- O banco garante que o coordenador do vendedor é mesmo um coordenador (trigger em `drizzle/0002_coordinator_rule.sql`). Usuário só é criado por `createUser` ([`src/users/create-user.ts`](./src/users/create-user.ts)), usado pelo seed e pelos testes; a tela do Administrador vem em outro ticket.
 - `pnpm --filter @axis/api db:seed` cria quatro contas de desenvolvimento (`admin@axis.dev`, `diretor@axis.dev`, `coordenador@axis.dev` e `vendedor@axis.dev`, senha `axis-dev-123`). Só roda contra um Postgres local (recusa qualquer `DATABASE_URL` que não seja localhost).
 
 ## Migrations

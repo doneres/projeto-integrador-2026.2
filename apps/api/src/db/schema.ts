@@ -31,8 +31,8 @@ export const users = pgTable(
   },
   (table) => [
     foreignKey({ columns: [table.coordinatorId], foreignColumns: [table.id] }),
-    // Obrigatório e só permitido para vendedor. Que ele aponte para um coordenador é conferido
-    // em createUser, a única porta de entrada de usuários.
+    // Obrigatório e só permitido para vendedor. Que ele aponte para um coordenador é garantido
+    // por trigger (drizzle/0002_coordinator_rule.sql), que um CHECK não consegue expressar.
     check(
       'user_coordinator_only_for_seller',
       sql`(${table.role} = 'seller') = (${table.coordinatorId} IS NOT NULL)`,

@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { users } from '../db/schema'
 import { ApiError } from '../errors'
 import { toUser } from '../users/to-user'
+import type { AuthOptions } from './options'
 import { verifyToken } from './token'
 
 declare module 'fastify' {
@@ -23,7 +24,7 @@ declare module 'fastify' {
 const notAuthenticated = () =>
   new ApiError(401, 'NAO_AUTENTICADO', 'Faça login para acessar este recurso')
 
-export function registerAuthentication(app: FastifyInstance, { jwtSecret }: { jwtSecret: string }) {
+export function registerAuthentication(app: FastifyInstance, { jwtSecret }: AuthOptions) {
   app.decorateRequest('user')
 
   app.decorate('authenticate', async (request: FastifyRequest) => {

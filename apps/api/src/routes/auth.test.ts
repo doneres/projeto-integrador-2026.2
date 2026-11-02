@@ -19,7 +19,11 @@ let coordinatorId: string
 
 beforeAll(async () => {
   testDb = await createTestDatabase()
-  app = await buildApp({ db: testDb.db, auth: { jwtSecret: TEST_JWT_SECRET } })
+  app = await buildApp({
+    db: testDb.db,
+    // Teto alto: esta suíte faz dezenas de logins do mesmo endereço (o limite tem teste próprio).
+    auth: { jwtSecret: TEST_JWT_SECRET, loginRateLimit: { max: 10_000, windowMs: 60_000 } },
+  })
   const coordinator = await createUser(testDb.db, {
     name: 'Carla Coordenadora',
     email: 'carla@axis.test',

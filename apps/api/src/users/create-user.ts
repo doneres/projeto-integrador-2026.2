@@ -18,8 +18,8 @@ export type NewUser = {
 
 /**
  * Única porta de entrada de usuários: a tela do Administrador ainda não existe, então só o seed
- * e os testes criam contas. Confere a regra do modelo de dados que o banco não alcança: o
- * coordenador do vendedor tem de ser mesmo um coordenador.
+ * e os testes criam contas. O banco também recusa um coordenador que não seja coordenador;
+ * conferir aqui antes só dá uma mensagem melhor.
  */
 export async function createUser(db: Database, input: NewUser) {
   // O login trata identificador com "@" como e-mail; a matrícula não pode ser confundida com um.

@@ -12,6 +12,7 @@ const TITLES: Record<number, string> = {
   404: 'Não encontrado',
   409: 'Conflito',
   422: 'Dados inválidos',
+  429: 'Muitas tentativas',
   500: 'Erro interno',
 }
 
