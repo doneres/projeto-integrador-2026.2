@@ -26,14 +26,16 @@ Monorepo com pnpm workspaces (decisão registrada na issue #21):
 
 ## Como Rodar
 
-Pré-requisitos: Node.js 24 LTS (versão em `.nvmrc`) e pnpm (`npm install -g pnpm`).
+Pré-requisitos: Node.js 24 LTS (versão em `.nvmrc`), pnpm (`npm install -g pnpm`) e Docker (Postgres da API e dos testes).
 
 ```bash
 pnpm install     # instala as dependências de todas as frentes
 pnpm dev:web     # sobe o painel web em modo de desenvolvimento
+pnpm db:up       # sobe o Postgres local (Docker Compose)
+pnpm dev:api     # sobe a API (precisa do .env: veja apps/api/README.md)
 pnpm lint        # lint e formatação (Biome)
 pnpm typecheck   # checagem de tipos
-pnpm test        # testes automatizados
+pnpm test        # testes automatizados (os da API precisam do Postgres: pnpm db:up)
 ```
 
 Instruções de cada frente ficam no README da própria pasta (ex.: [`apps/web`](./apps/web/README.md)).

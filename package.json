@@ -8,6 +8,9 @@
   },
   "scripts": {
     "dev:web": "pnpm --filter @axis/web dev",
+    "dev:api": "pnpm --filter @axis/api dev",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "pnpm -r --if-present run typecheck",
