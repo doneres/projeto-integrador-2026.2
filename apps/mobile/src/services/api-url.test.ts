@@ -1,5 +1,10 @@
 import { createMemoryStore } from '@test/memory-store'
-import { createApiUrlSettings, InvalidApiUrlError } from './api-url'
+import {
+  ApiUrlMissingError,
+  createApiUrlSettings,
+  InvalidApiUrlError,
+  isInsecureApiUrl,
+} from './api-url'
 
 describe('createApiUrlSettings', () => {
   it('sem URL guardada vale a do ambiente do build', async () => {
@@ -41,5 +46,23 @@ describe('createApiUrlSettings', () => {
     })
     await settings.setOverride('http://10.0.0.5:3000')
     await expect(settings.resolve()).resolves.toBe('http://10.0.0.5:3000')
+  })
+})
+
+describe('sem URL em lugar nenhum', () => {
+  it('resolve falha com um erro que leva o Vendedor à configuração', async () => {
+    const settings = createApiUrlSettings(createMemoryStore(), () => {
+      throw new Error('ambiente ausente')
+    })
+    await expect(settings.resolve()).rejects.toBeInstanceOf(ApiUrlMissingError)
+  })
+})
+
+describe('isInsecureApiUrl', () => {
+  it('http é inseguro, https não', () => {
+    expect(isInsecureApiUrl('http://192.168.0.10:3000')).toBe(true)
+    expect(isInsecureApiUrl('HTTP://servidor')).toBe(true)
+    expect(isInsecureApiUrl('https://axis-api.onrender.com')).toBe(false)
+    expect(isInsecureApiUrl('')).toBe(false)
   })
 })

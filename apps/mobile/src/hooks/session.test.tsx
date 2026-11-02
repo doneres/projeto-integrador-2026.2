@@ -73,6 +73,18 @@ describe('SessionProvider', () => {
     await expect(data.sessions.load()).resolves.toBeNull()
   })
 
+  it('um 401 tardio de um token antigo não derruba a sessão nova', async () => {
+    const data = createFakeAppData()
+    await data.sessions.save(sellerSession())
+    await renderProvider(data)
+    await waitFor(() => expect(screen.getByText('status:signedIn')).toBeOnTheScreen())
+
+    await act(async () => data.emitUnauthorized('jwt-de-um-login-anterior'))
+
+    expect(screen.getByText('status:signedIn')).toBeOnTheScreen()
+    await expect(data.sessions.load()).resolves.toEqual(sellerSession())
+  })
+
   it('falha ao ler o armazenamento seguro não trava o app na tela de carregamento', async () => {
     const data = createFakeAppData()
     data.sessions.load = jest.fn().mockRejectedValue(new Error('keystore indisponível'))

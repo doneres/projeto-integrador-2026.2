@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { InvalidApiUrlError } from '@/services/api-url'
+import { InvalidApiUrlError, isInsecureApiUrl } from '@/services/api-url'
 import { useSession } from './session'
 
 /** Lê e troca a URL da API guardada no aparelho (sem ela, vale a do ambiente do build). */
@@ -49,5 +49,5 @@ export function useApiUrl() {
 
   const clearError = useCallback(() => setError(null), [])
 
-  return { current, isCustom, loaded, error, save, reset, clearError }
+  return { current, isCustom, loaded, error, save, reset, clearError, isInsecure: isInsecureApiUrl }
 }

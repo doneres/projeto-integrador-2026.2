@@ -1,21 +1,10 @@
-import type { Session } from '@axis/contracts'
+import { sellerSession } from '@test/fake-app-data'
 import { createMemoryStore } from '@test/memory-store'
 import { createSessionRepository } from './session-repository'
 
 const NOW = new Date('2026-11-02T12:00:00.000Z')
 
-const session: Session = {
-  token: 'jwt-123',
-  expiresAt: '2026-11-02T20:00:00.000Z',
-  user: {
-    id: '0198f2a0-7c1e-7000-8000-000000000001',
-    name: 'Ana Souza',
-    email: 'ana@axis.test',
-    registration: '2001',
-    role: 'seller',
-    coordinatorId: '0198f2a0-7c1e-7000-8000-000000000002',
-  },
-}
+const session = sellerSession()
 
 describe('createSessionRepository', () => {
   it('guarda a sessão e a devolve numa nova instância (sessão persistida)', async () => {

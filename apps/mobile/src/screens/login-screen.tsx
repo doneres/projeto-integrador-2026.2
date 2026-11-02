@@ -21,7 +21,7 @@ type BusyStatus = 'submitting' | 'waking'
 const LOADING_MESSAGE: Record<BusyStatus, string> = {
   submitting: 'Entrando…',
   waking:
-    'Acordando o servidor… O primeiro acesso do dia pode levar cerca de um minuto. Aguarde, não feche o app.',
+    'Acordando o servidor… Se ele estava dormindo, pode levar até um minuto. Aguarde, não feche o app.',
 }
 
 export function LoginScreen() {

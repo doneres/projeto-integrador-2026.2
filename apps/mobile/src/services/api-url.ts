@@ -10,6 +10,19 @@ export class InvalidApiUrlError extends Error {
   }
 }
 
+/** Não há URL guardada no aparelho nem no ambiente do build. */
+export class ApiUrlMissingError extends Error {
+  constructor() {
+    super('A URL da API não está configurada')
+    this.name = 'ApiUrlMissingError'
+  }
+}
+
+/** `http://` leva e-mail, matrícula e senha sem criptografia. */
+export function isInsecureApiUrl(url: string): boolean {
+  return url.trim().toLowerCase().startsWith('http://')
+}
+
 export type ApiUrlSettings = {
   /** URL em uso: a guardada no aparelho, ou a do ambiente do build. */
   resolve(): Promise<string>
@@ -26,7 +39,13 @@ export function createApiUrlSettings(
 ): ApiUrlSettings {
   return {
     async resolve() {
-      return (await store.get(STORAGE_KEY)) ?? envApiUrl()
+      const stored = await store.get(STORAGE_KEY)
+      if (stored !== null) return stored
+      try {
+        return envApiUrl()
+      } catch {
+        throw new ApiUrlMissingError()
+      }
     },
     getOverride: () => store.get(STORAGE_KEY),
     async setOverride(url) {

@@ -3,6 +3,7 @@ import { createFakeAppData, sellerSession } from '@test/fake-app-data'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { ApiRequestError, NetworkError, RequestTimeoutError } from '@/services/api-client'
+import { ApiUrlMissingError } from '@/services/api-url'
 import { SessionProvider } from './session'
 import { useLogin, WAKING_DELAY_MS } from './use-login'
 
@@ -112,6 +113,15 @@ describe('useLogin', () => {
     await submit(result)
     expect(result.current.formError).toBe(
       'Não foi possível conectar ao servidor. Confira a conexão e a URL da API.',
+    )
+  })
+
+  it('sem URL da API configurada manda o Vendedor ao toque longo no logo', async () => {
+    const { result } = await setup(jest.fn().mockRejectedValue(new ApiUrlMissingError()))
+    await fill(result, '2001', 'axis-demo-2026')
+    await submit(result)
+    expect(result.current.formError).toBe(
+      'A URL da API não está configurada. Faça um toque longo no logo AXIS e informe o endereço.',
     )
   })
 

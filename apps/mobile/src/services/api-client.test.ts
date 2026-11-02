@@ -75,7 +75,9 @@ describe('createApiClient', () => {
     const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(401, { status: 401, title: 'x' }))
     const { client, onUnauthorized } = setup(fetchImpl)
     await expect(client.request('/v1/me')).rejects.toBeInstanceOf(ApiRequestError)
+    // Leva o token usado na chamada: quem recebe descarta o aviso de um token que já saiu de cena.
     expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    expect(onUnauthorized).toHaveBeenCalledWith('jwt-123')
   })
 
   it('401 do login (credenciais erradas) não derruba sessão nenhuma', async () => {
@@ -119,6 +121,21 @@ describe('createApiClient', () => {
 
     it('aborta a chamada que passa de timeoutMs e lança RequestTimeoutError', async () => {
       const { client } = setup(hangingFetch())
+      let outcome: unknown
+      client.request('/v1/x', { timeoutMs: 90_000 }).catch((e) => {
+        outcome = e
+      })
+
+      await jest.advanceTimersByTimeAsync(89_999)
+      expect(outcome).toBeUndefined()
+
+      await jest.advanceTimersByTimeAsync(1)
+      expect(outcome).toBeInstanceOf(RequestTimeoutError)
+    })
+
+    it('o prazo também vale para a leitura do corpo da resposta', async () => {
+      const stuckBody = { ok: true, status: 200, json: () => new Promise(() => undefined) }
+      const { client } = setup(jest.fn().mockResolvedValue(stuckBody))
       let outcome: unknown
       client.request('/v1/x', { timeoutMs: 90_000 }).catch((e) => {
         outcome = e

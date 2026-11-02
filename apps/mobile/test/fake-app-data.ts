@@ -1,5 +1,5 @@
 import type { Session } from '@axis/contracts'
-import { type AppData, createAppData } from '@/repositories/app-data'
+import { type AppData, createAppData, createUnauthorizedBus } from '@/repositories/app-data'
 import type { AuthRepository } from '@/repositories/auth-repository'
 import { createMemoryStore } from './memory-store'
 
@@ -21,8 +21,8 @@ export function sellerSession(overrides: Partial<Session['user']> = {}): Session
 }
 
 export type FakeAppData = AppData & {
-  /** Simula a API respondendo 401 a uma chamada autenticada. */
-  emitUnauthorized(): void
+  /** Simula a API respondendo 401 a uma chamada feita com `token` (padrão: o de `sellerSession`). */
+  emitUnauthorized(token?: string | null): void
 }
 
 /** Repositórios de verdade sobre armazenamento em memória; só o login é falso. */
@@ -32,18 +32,11 @@ export function createFakeAppData(auth?: AuthRepository): FakeAppData {
     fetch: (() => Promise.reject(new Error('rede indisponível nos testes'))) as typeof fetch,
     envApiUrl: () => 'http://env.test',
   })
-  const listeners = new Set<() => void>()
+  const unauthorized = createUnauthorizedBus()
   return {
     ...real,
     auth: auth ?? real.auth,
-    onUnauthorized(listener) {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    },
-    emitUnauthorized() {
-      for (const listener of [...listeners]) listener()
-    },
+    onUnauthorized: unauthorized.subscribe,
+    emitUnauthorized: (token = sellerSession().token) => unauthorized.emit(token),
   }
 }

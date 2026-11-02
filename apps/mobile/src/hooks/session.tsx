@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { AppState } from 'react-native'
@@ -77,8 +78,18 @@ export function SessionProvider({
     }
   }, [data])
 
-  // 401 em qualquer chamada autenticada: o token não vale mais.
-  useEffect(() => data.onUnauthorized(() => void signOut()), [data, signOut])
+  // 401 em qualquer chamada autenticada: o token não vale mais. Um 401 tardio de um token antigo
+  // (a chamada saiu antes de um novo login) não derruba a sessão atual.
+  const currentToken = useRef<string | null>(null)
+  currentToken.current = state.status === 'signedIn' ? state.session.token : null
+  useEffect(
+    () =>
+      data.onUnauthorized((rejected) => {
+        if (rejected !== null && rejected !== currentToken.current) return
+        void signOut()
+      }),
+    [data, signOut],
+  )
 
   // A sessão vence com o app aberto (timer) ou enquanto ele esteve em segundo plano (AppState).
   const expiresAt = state.status === 'signedIn' ? state.session.expiresAt : null

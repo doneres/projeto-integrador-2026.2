@@ -28,11 +28,11 @@ export class RequestTimeoutError extends Error {
 }
 
 export type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  method?: 'GET' | 'POST'
   body?: unknown
   /** Padrão `true`: anexa o token e trata 401 como sessão vencida. O login passa `false`. */
   authenticated?: boolean
-  /** Sem valor, a chamada espera sem limite. */
+  /** Prazo da chamada inteira, inclusive a leitura da resposta. Sem valor, espera sem limite. */
   timeoutMs?: number
 }
 
@@ -40,8 +40,12 @@ export type ApiClientDeps = {
   fetch?: typeof fetch
   getBaseUrl: () => Promise<string>
   getToken: () => Promise<string | null>
-  /** Chamado quando uma chamada autenticada recebe 401 (token vencido ou inválido). */
-  onUnauthorized: () => void
+  /**
+   * Chamado quando uma chamada autenticada recebe 401 (token vencido ou inválido), com o token
+   * que foi enviado (`null` se não havia). Quem recebe compara com a sessão atual: um 401 tardio
+   * de um token antigo não pode derrubar uma sessão nova.
+   */
+  onUnauthorized: (token: string | null) => void
 }
 
 export type ApiClient = {
@@ -59,6 +63,12 @@ async function readProblem(response: Response): Promise<ProblemBody> {
   }
 }
 
+function problemMessage(problem: ProblemBody, status: number): string {
+  if (typeof problem.detail === 'string') return problem.detail
+  if (typeof problem.title === 'string') return problem.title
+  return `Erro ${status}`
+}
+
 export function createApiClient({
   fetch: fetchImpl = (...args) => fetch(...args),
   getBaseUrl,
@@ -70,53 +80,52 @@ export function createApiClient({
       const { method = 'GET', body, authenticated = true, timeoutMs } = options
       const headers: Record<string, string> = { Accept: 'application/json' }
       if (body !== undefined) headers['Content-Type'] = 'application/json'
-      if (authenticated) {
-        const token = await getToken()
-        if (token) headers.Authorization = `Bearer ${token}`
-      }
+      const token = authenticated ? await getToken() : null
+      if (token) headers.Authorization = `Bearer ${token}`
       const url = `${await getBaseUrl()}${path}`
 
       const controller = new AbortController()
-      let timedOut = false
-      const timer =
-        timeoutMs === undefined
-          ? undefined
-          : setTimeout(() => {
-              timedOut = true
-              controller.abort()
-            }, timeoutMs)
 
-      let response: Response
+      async function exchange(): Promise<T> {
+        let response: Response
+        try {
+          response = await fetchImpl(url, {
+            method,
+            headers,
+            body: body === undefined ? undefined : JSON.stringify(body),
+            signal: controller.signal,
+          })
+        } catch {
+          throw new NetworkError()
+        }
+
+        if (!response.ok) {
+          if (response.status === 401 && authenticated) onUnauthorized(token)
+          const problem = await readProblem(response)
+          throw new ApiRequestError(
+            response.status,
+            typeof problem.codigo === 'string' ? problem.codigo : undefined,
+            problemMessage(problem, response.status),
+          )
+        }
+        return (await response.json()) as T
+      }
+
+      if (timeoutMs === undefined) return exchange()
+
+      // O prazo vale para a chamada inteira, inclusive a leitura do corpo da resposta.
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const deadline = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort()
+          reject(new RequestTimeoutError())
+        }, timeoutMs)
+      })
       try {
-        response = await fetchImpl(url, {
-          method,
-          headers,
-          body: body === undefined ? undefined : JSON.stringify(body),
-          signal: controller.signal,
-        })
-      } catch {
-        throw timedOut ? new RequestTimeoutError() : new NetworkError()
+        return await Promise.race([exchange(), deadline])
       } finally {
-        if (timer !== undefined) clearTimeout(timer)
+        clearTimeout(timer)
       }
-
-      if (!response.ok) {
-        if (response.status === 401 && authenticated) onUnauthorized()
-        const problem = await readProblem(response)
-        const message =
-          typeof problem.detail === 'string'
-            ? problem.detail
-            : typeof problem.title === 'string'
-              ? problem.title
-              : `Erro ${response.status}`
-        throw new ApiRequestError(
-          response.status,
-          typeof problem.codigo === 'string' ? problem.codigo : undefined,
-          message,
-        )
-      }
-
-      return (await response.json()) as T
     },
   }
 }

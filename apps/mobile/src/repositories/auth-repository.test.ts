@@ -1,18 +1,8 @@
+import { sellerSession } from '@test/fake-app-data'
 import { ApiRequestError } from '@/services/api-client'
 import { createAuthRepository, LOGIN_TIMEOUT_MS } from './auth-repository'
 
-const validSession = {
-  token: 'jwt-123',
-  expiresAt: '2026-11-02T20:00:00.000Z',
-  user: {
-    id: '0198f2a0-7c1e-7000-8000-000000000001',
-    name: 'Ana Souza',
-    email: 'ana@axis.test',
-    registration: '2001',
-    role: 'seller',
-    coordinatorId: null,
-  },
-}
+const validSession = sellerSession()
 
 describe('createAuthRepository', () => {
   it('POST /v1/auth/login sem token e com timeout de 90 s', async () => {

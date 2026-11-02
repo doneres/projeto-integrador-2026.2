@@ -1,6 +1,7 @@
 import { type LoginBody, loginBodySchema } from '@axis/contracts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiRequestError, NetworkError, RequestTimeoutError } from '@/services/api-client'
+import { ApiUrlMissingError } from '@/services/api-url'
 import { useSession } from './session'
 
 /** Depois deste tempo sem resposta, a tela avisa que o servidor está acordando. */
@@ -17,6 +18,9 @@ export type LoginFocus = 'identifier' | 'password' | 'form'
 export type SubmitResult = { ok: true } | { ok: false; focus: LoginFocus }
 
 function messageFor(error: unknown): string {
+  if (error instanceof ApiUrlMissingError) {
+    return 'A URL da API não está configurada. Faça um toque longo no logo AXIS e informe o endereço.'
+  }
   if (error instanceof RequestTimeoutError) {
     return 'O servidor não respondeu a tempo. Tente de novo em instantes.'
   }

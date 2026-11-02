@@ -162,6 +162,20 @@ describe('LoginScreen', () => {
       expect(screen.getByLabelText('URL da API')).toHaveDisplayValue('http://env.test')
     })
 
+    it('avisa que http leva a senha sem criptografia, e não avisa com https', async () => {
+      await renderLogin()
+      await fireEvent(screen.getByLabelText('AXIS'), 'longPress')
+
+      await fireEvent.changeText(screen.getByLabelText('URL da API'), 'http://10.0.0.5:3000')
+      expect(screen.getByText(/Atenção: endereço sem https/)).toBeOnTheScreen()
+
+      await fireEvent.changeText(
+        screen.getByLabelText('URL da API'),
+        'https://axis-api.onrender.com',
+      )
+      expect(screen.queryByText(/Atenção: endereço sem https/)).not.toBeOnTheScreen()
+    })
+
     it('guarda a URL nova no aparelho', async () => {
       const data = await renderLogin()
       await fireEvent(screen.getByLabelText('AXIS'), 'longPress')

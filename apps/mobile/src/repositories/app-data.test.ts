@@ -1,19 +1,9 @@
-import type { Session } from '@axis/contracts'
+import { sellerSession } from '@test/fake-app-data'
 import { createMemoryStore } from '@test/memory-store'
 import { createAppData } from './app-data'
 
-const session: Session = {
-  token: 'jwt-123',
-  expiresAt: '2099-01-01T00:00:00.000Z',
-  user: {
-    id: '0198f2a0-7c1e-7000-8000-000000000001',
-    name: 'Ana Souza',
-    email: 'ana@axis.test',
-    registration: '2001',
-    role: 'seller',
-    coordinatorId: null,
-  },
-}
+// A sessão tem de valer de verdade: o cliente HTTP lê o token do armazenamento com o relógio real.
+const session = { ...sellerSession(), expiresAt: '2099-01-01T00:00:00.000Z' }
 
 function jsonResponse(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status })

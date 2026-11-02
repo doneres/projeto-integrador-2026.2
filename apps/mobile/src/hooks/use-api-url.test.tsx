@@ -50,6 +50,12 @@ describe('useApiUrl', () => {
     expect(result.current.current).toBe('http://env.test')
   })
 
+  it('avisa quando o endereço digitado não usa https', async () => {
+    const { result } = await setup()
+    expect(result.current.isInsecure('http://10.0.0.5:3000')).toBe(true)
+    expect(result.current.isInsecure('https://axis-api.onrender.com')).toBe(false)
+  })
+
   it('restaurar volta para a URL do ambiente', async () => {
     const { result } = await setup()
     await act(async () => {

@@ -10,7 +10,7 @@ type ApiUrlPanelProps = {
 
 /** Troca a URL da API dentro do app. Fica escondida atrás do toque longo no logo. */
 export function ApiUrlPanel({ onClose }: ApiUrlPanelProps) {
-  const { current, isCustom, loaded, error, save, reset, clearError } = useApiUrl()
+  const { current, isCustom, loaded, error, save, reset, clearError, isInsecure } = useApiUrl()
   const [draft, setDraft] = useState('')
 
   useEffect(() => {
@@ -42,6 +42,12 @@ export function ApiUrlPanel({ onClose }: ApiUrlPanelProps) {
         accessibilityLabel="URL da API"
         accessibilityRole="text"
       />
+      {isInsecure(draft) ? (
+        <Text className="text-sm text-text">
+          Atenção: endereço sem https. O e-mail, a matrícula e a senha viajam sem criptografia. Use
+          só na rede local de desenvolvimento.
+        </Text>
+      ) : null}
       <Button
         title="Salvar"
         accessibilityLabel="Salvar URL da API"
