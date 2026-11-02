@@ -1,5 +1,5 @@
+import { createMemoryStore } from '@test/memory-store'
 import { createApiUrlSettings, InvalidApiUrlError } from './api-url'
-import { createMemoryStore } from './key-value-store'
 
 describe('createApiUrlSettings', () => {
   it('sem URL guardada vale a do ambiente do build', async () => {

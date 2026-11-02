@@ -1,7 +1,7 @@
 import type { Session } from '@axis/contracts'
+import { createFakeAppData, sellerSession } from '@test/fake-app-data'
 import { act, render, screen, waitFor } from '@testing-library/react-native'
 import { Text } from 'react-native'
-import { createFakeAppData, sellerSession } from './fake-app-data'
 import { SessionProvider, useSession } from './session'
 
 function Probe() {
@@ -71,6 +71,25 @@ describe('SessionProvider', () => {
 
     expect(screen.getByText('status:signedOut')).toBeOnTheScreen()
     await expect(data.sessions.load()).resolves.toBeNull()
+  })
+
+  it('falha ao ler o armazenamento seguro não trava o app na tela de carregamento', async () => {
+    const data = createFakeAppData()
+    data.sessions.load = jest.fn().mockRejectedValue(new Error('keystore indisponível'))
+    await renderProvider(data)
+    await waitFor(() => expect(screen.getByText('status:signedOut')).toBeOnTheScreen())
+  })
+
+  it('sair volta ao login mesmo se apagar o token falhar', async () => {
+    const data = createFakeAppData()
+    await data.sessions.save(sellerSession())
+    await renderProvider(data)
+    await waitFor(() => expect(screen.getByText('status:signedIn')).toBeOnTheScreen())
+    data.sessions.clear = jest.fn().mockRejectedValue(new Error('keystore indisponível'))
+
+    await act(async () => screen.getByText('sair').props.onPress())
+
+    expect(screen.getByText('status:signedOut')).toBeOnTheScreen()
   })
 
   describe('validade de 8 horas', () => {

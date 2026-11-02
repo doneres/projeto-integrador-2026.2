@@ -1,6 +1,7 @@
 import type { LoginBody, Session } from '@axis/contracts'
+import { createFakeAppData, type FakeAppData, sellerSession } from '@test/fake-app-data'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { createFakeAppData, type FakeAppData, sellerSession } from '@/hooks/fake-app-data'
+import { AccessibilityInfo } from 'react-native'
 import { SessionProvider } from '@/hooks/session'
 import { WAKING_DELAY_MS } from '@/hooks/use-login'
 import { ApiRequestError } from '@/services/api-client'
@@ -77,6 +78,54 @@ describe('LoginScreen', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Este aplicativo é do Vendedor/)
     await expect(data.sessions.load()).resolves.toBeNull()
+  })
+
+  describe('leitor de tela', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    it('anuncia o erro do servidor (iOS ignora accessibilityLiveRegion)', async () => {
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
+      const login = jest
+        .fn()
+        .mockRejectedValue(
+          new ApiRequestError(
+            401,
+            'CREDENCIAIS_INVALIDAS',
+            'E-mail, matrícula ou senha incorretos',
+          ),
+        )
+      await renderLogin(login)
+      await typeCredentials('2001', 'senha-errada')
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }))
+
+      await waitFor(() =>
+        expect(announce).toHaveBeenCalledWith('Erro: E-mail, matrícula ou senha incorretos'),
+      )
+    })
+
+    it('anuncia o carregamento e o aviso de servidor acordando', async () => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] })
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility')
+      await renderLogin(() => new Promise<Session>(() => undefined))
+      await typeCredentials('2001', 'axis-demo-2026')
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }))
+      expect(announce).toHaveBeenCalledWith('Entrando…')
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(WAKING_DELAY_MS)
+      })
+      expect(announce).toHaveBeenLastCalledWith(expect.stringContaining('Acordando o servidor'))
+      jest.useRealTimers()
+    })
+
+    it('mantém os campos editáveis durante o envio, para o foco não ser derrubado', async () => {
+      await renderLogin(() => new Promise<Session>(() => undefined))
+      await typeCredentials('2001', 'axis-demo-2026')
+      await fireEvent.press(screen.getByRole('button', { name: 'Entrar' }))
+      expect(screen.getByLabelText('Senha')).not.toHaveProp('editable', false)
+    })
   })
 
   describe('carregando', () => {

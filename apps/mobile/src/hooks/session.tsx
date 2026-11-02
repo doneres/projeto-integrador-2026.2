@@ -46,7 +46,12 @@ export function SessionProvider({
 
   const signOut = useCallback(async () => {
     setState({ status: 'signedOut' })
-    await data.sessions.clear()
+    try {
+      await data.sessions.clear()
+    } catch {
+      // Sem acesso ao armazenamento seguro, o app já voltou ao login; o token que ficou
+      // vence sozinho em até 8 h e load() o descarta se estiver vencido.
+    }
   }, [data])
 
   const signIn = useCallback(
@@ -60,9 +65,13 @@ export function SessionProvider({
   // Restaura a sessão guardada; o repositório já descarta a vencida.
   useEffect(() => {
     let active = true
-    data.sessions.load().then((session) => {
-      if (active) setState(session ? { status: 'signedIn', session } : { status: 'signedOut' })
-    })
+    data.sessions
+      .load()
+      // Armazenamento seguro com defeito: o Vendedor entra de novo em vez de ficar na splash.
+      .catch(() => null)
+      .then((session) => {
+        if (active) setState(session ? { status: 'signedIn', session } : { status: 'signedOut' })
+      })
     return () => {
       active = false
     }

@@ -1,5 +1,5 @@
 import type { Session } from '@axis/contracts'
-import { createMemoryStore } from '@/services/key-value-store'
+import { createMemoryStore } from '@test/memory-store'
 import { createAppData } from './app-data'
 
 const session: Session = {

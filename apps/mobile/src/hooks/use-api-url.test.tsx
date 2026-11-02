@@ -1,6 +1,6 @@
+import { createFakeAppData } from '@test/fake-app-data'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
-import { createFakeAppData } from './fake-app-data'
 import { SessionProvider } from './session'
 import { useApiUrl } from './use-api-url'
 

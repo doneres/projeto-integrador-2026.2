@@ -18,7 +18,6 @@ type TextFieldProps = RequiredAccessibility<'text' | 'search'> &
     | 'placeholder'
     | 'returnKeyType'
     | 'onSubmitEditing'
-    | 'editable'
   > & {
     label: string
     value: string

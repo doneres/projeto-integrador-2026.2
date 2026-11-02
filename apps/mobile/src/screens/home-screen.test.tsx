@@ -1,5 +1,5 @@
+import { createFakeAppData, sellerSession } from '@test/fake-app-data'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
-import { createFakeAppData, sellerSession } from '@/hooks/fake-app-data'
 import { SessionProvider } from '@/hooks/session'
 import { HomeScreen } from './home-screen'
 

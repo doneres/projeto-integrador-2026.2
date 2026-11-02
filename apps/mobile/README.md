@@ -93,4 +93,4 @@ Textos da interface e caminhos de `app/` ficam em português; o código (nomes, 
 
 ## Testes
 
-Os testes ficam ao lado do arquivo testado (`*.test.ts`, `*.test.tsx`). Para rodar um arquivo só: `pnpm test src/components`.
+Os testes ficam ao lado do arquivo testado (`*.test.ts`, `*.test.tsx`). Apoio só de teste (repositórios falsos, armazenamento em memória) fica em `test/` e é importado por `@test/`; nada disso entra em `src/`. Para rodar um arquivo só: `pnpm test src/components`.

@@ -1,5 +1,5 @@
 import type { Session } from '@axis/contracts'
-import { createMemoryStore } from '@/services/key-value-store'
+import { createMemoryStore } from '@test/memory-store'
 import { createSessionRepository } from './session-repository'
 
 const NOW = new Date('2026-11-02T12:00:00.000Z')

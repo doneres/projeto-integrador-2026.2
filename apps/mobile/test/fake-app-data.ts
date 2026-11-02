@@ -1,7 +1,7 @@
 import type { Session } from '@axis/contracts'
 import { type AppData, createAppData } from '@/repositories/app-data'
 import type { AuthRepository } from '@/repositories/auth-repository'
-import { createMemoryStore } from '@/services/key-value-store'
+import { createMemoryStore } from './memory-store'
 
 /** Sessão de Vendedor válida para os testes. */
 export function sellerSession(overrides: Partial<Session['user']> = {}): Session {

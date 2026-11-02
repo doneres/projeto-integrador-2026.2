@@ -1,8 +1,8 @@
 import type { LoginBody, Session } from '@axis/contracts'
+import { createFakeAppData, sellerSession } from '@test/fake-app-data'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { ApiRequestError, NetworkError, RequestTimeoutError } from '@/services/api-client'
-import { createFakeAppData, sellerSession } from './fake-app-data'
 import { SessionProvider } from './session'
 import { useLogin, WAKING_DELAY_MS } from './use-login'
 

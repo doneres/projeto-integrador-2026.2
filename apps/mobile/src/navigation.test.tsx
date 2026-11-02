@@ -1,7 +1,7 @@
 import { join } from 'node:path'
+import { createFakeAppData, type FakeAppData, sellerSession } from '@test/fake-app-data'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native'
 import { renderRouter } from 'expo-router/testing-library'
-import { createFakeAppData, type FakeAppData, sellerSession } from '@/hooks/fake-app-data'
 import * as appDataModule from '@/repositories/app-data'
 
 // A primeira renderização compila a árvore inteira de rotas e passa dos 5 s padrão.
