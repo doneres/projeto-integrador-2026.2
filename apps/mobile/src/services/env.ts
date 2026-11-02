@@ -9,6 +9,12 @@ const envSchema = z.object({
 
 export type Env = { apiUrl: string }
 
+/** URL da API sem a barra final, ou `null` se não for uma URL http(s) completa. */
+export function parseApiUrl(value: string): string | null {
+  const parsed = envSchema.shape.EXPO_PUBLIC_API_URL.safeParse(value.trim())
+  return parsed.success ? parsed.data.replace(/\/+$/, '') : null
+}
+
 /** Valida o ambiente. Só a URL da API entra no app; todo EXPO_PUBLIC_* é embutido no bundle. */
 export function readEnv(source: Record<string, string | undefined>): Env {
   const parsed = envSchema.safeParse(source)

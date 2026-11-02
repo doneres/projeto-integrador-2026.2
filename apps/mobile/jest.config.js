@@ -1,6 +1,8 @@
 module.exports = {
   preset: 'jest-expo',
   moduleNameMapper: {
+    // O CSS do NativeWind só importa para o Metro; no Jest vira um módulo vazio.
+    '\\.css$': '<rootDir>/test/empty-module.js',
     '^@/(.*)$': '<rootDir>/src/$1',
     // O Jest escolheria a build ESM (.mjs) do lucide pela condição "react-native", e o
     // jest-expo não transforma .mjs. A build CommonJS serve igual para os testes.
