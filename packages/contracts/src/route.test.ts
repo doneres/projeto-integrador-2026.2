@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createRouteBodySchema, routeSchema } from './route'
+import { createRouteBodySchema, routeFiltersSchema, routeSchema } from './route'
 
 const route = {
   id: '0192f4a0-0000-7000-8000-0000000000d1',
@@ -51,5 +51,18 @@ describe('createRouteBodySchema: tamanho', () => {
 
     expect(createRouteBodySchema.safeParse({ ...body, customerIds: ids(100) }).success).toBe(true)
     expect(createRouteBodySchema.safeParse({ ...body, customerIds: ids(101) }).success).toBe(false)
+  })
+})
+
+describe('routeFiltersSchema', () => {
+  it('pagina e filtra por dia e por vendedor', () => {
+    expect(routeFiltersSchema.parse({})).toEqual({ page: 1, perPage: 20 })
+    expect(
+      routeFiltersSchema.parse({ date: '2026-11-03', sellerId: route.sellerId, page: '2' }),
+    ).toEqual({ date: '2026-11-03', sellerId: route.sellerId, page: 2, perPage: 20 })
+  })
+
+  it('recusa data com horário', () => {
+    expect(routeFiltersSchema.safeParse({ date: '2026-11-03T10:00:00Z' }).success).toBe(false)
   })
 })

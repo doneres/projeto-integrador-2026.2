@@ -103,11 +103,26 @@ export type CustomerStatusChange = z.infer<typeof customerStatusChangeSchema>
 export const customerRejectionSchema = z.object({ reason: reasonSchema })
 export type CustomerRejection = z.infer<typeof customerRejectionSchema>
 
-/** Query do GET /v1/customers: paginação, busca por nome ou CPF/CNPJ e filtros. */
+/** Campos pelos quais a listagem de clientes pode ser ordenada. */
+export const customerSortFieldSchema = z.enum([
+  'tradeName',
+  'legalName',
+  'city',
+  'district',
+  'createdAt',
+])
+export type CustomerSortField = z.infer<typeof customerSortFieldSchema>
+
+/**
+ * Query do GET /v1/customers: paginação, busca por nome ou CPF/CNPJ, filtros e ordenação
+ * (nome fantasia crescente por padrão).
+ */
 export const customerFiltersSchema = paginationSchema.extend({
   search: z.string().trim().max(100).optional(),
   status: customerStatusSchema.optional(),
   origin: customerOriginSchema.optional(),
   district: z.string().trim().max(100).optional(),
+  sortBy: customerSortFieldSchema.default('tradeName'),
+  order: z.enum(['asc', 'desc']).default('asc'),
 })
 export type CustomerFilters = z.infer<typeof customerFiltersSchema>

@@ -151,7 +151,22 @@ describe('customerFiltersSchema', () => {
       origin: 'prospect',
       page: 2,
       perPage: 20,
+      sortBy: 'tradeName',
+      order: 'asc',
     })
+  })
+
+  it('ordena por nome fantasia crescente por padrão e aceita outro campo e sentido', () => {
+    expect(customerFiltersSchema.parse({})).toMatchObject({ sortBy: 'tradeName', order: 'asc' })
+    expect(customerFiltersSchema.parse({ sortBy: 'createdAt', order: 'desc' })).toMatchObject({
+      sortBy: 'createdAt',
+      order: 'desc',
+    })
+  })
+
+  it('recusa ordenar por um campo que não existe', () => {
+    expect(customerFiltersSchema.safeParse({ sortBy: 'document' }).success).toBe(false)
+    expect(customerFiltersSchema.safeParse({ order: 'up' }).success).toBe(false)
   })
 })
 
