@@ -31,7 +31,7 @@ export async function routeReadingRoutes(app: FastifyInstance) {
       .from(visits)
       .innerJoin(customers, eq(visits.customerId, customers.id))
       .where(eq(visits.routeId, route.id))
-      .orderBy(asc(visits.position))
+      .orderBy(asc(visits.position), asc(visits.id))
     return { ...toRoute(route), visits: rows.map((r) => toRouteVisit(r.visit, r.customer)) }
   }
 

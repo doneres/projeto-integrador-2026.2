@@ -13,7 +13,7 @@ export function toRoute(row: typeof routes.$inferSelect): Route {
   }
 }
 
-export function toVisit(row: typeof visits.$inferSelect): Visit {
+function toVisit(row: typeof visits.$inferSelect): Visit {
   return {
     id: row.id,
     routeId: row.routeId,

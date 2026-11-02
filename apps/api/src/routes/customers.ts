@@ -11,7 +11,7 @@ import {
   problemaSchema,
   type User,
 } from '@axis/contracts'
-import { and, asc, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, type SQL } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { v7 as uuidv7 } from 'uuid'
@@ -266,9 +266,16 @@ export async function customerRoutes(app: FastifyInstance) {
       const [row] = await app.db
         .update(customers)
         .set({ status: request.body.status })
-        .where(eq(customers.id, current.id))
+        // Confere o estado no próprio UPDATE: uma aprovação ou rejeição concorrente não é sobrescrita.
+        .where(and(eq(customers.id, current.id), inArray(customers.status, ['active', 'inactive'])))
         .returning()
-      if (!row) throw new Error('Falha ao mudar o estado do cliente')
+      if (!row) {
+        throw new ApiError(
+          409,
+          'TRANSICAO_INVALIDA',
+          'O estado do cliente mudou; recarregue e tente de novo',
+        )
+      }
       return toCustomer(row)
     },
   )

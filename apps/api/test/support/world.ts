@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import type { Role } from '@axis/contracts'
 import { signToken } from '../../src/auth/token'
 import type { Database } from '../../src/db/client'
 import { createUser } from '../../src/users/create-user'
@@ -11,11 +12,7 @@ const PASSWORD = 'senha-do-teste'
  * Equipe A: coordenador e dois vendedores. Equipe B: coordenador e um vendedor.
  */
 export async function createWorld(db: Database) {
-  const make = (
-    key: string,
-    role: 'seller' | 'coordinator' | 'director' | 'administrator',
-    coordinatorId?: string,
-  ) =>
+  const make = (key: string, role: Role, coordinatorId?: string) =>
     createUser(db, {
       name: key,
       email: `${key}@axis.test`,
