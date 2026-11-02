@@ -45,12 +45,15 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | GET | `/health` (sem `/v1` e sem login) | | 200 `healthSchema`; não consulta o banco | na API |
 | POST | `/v1/auth/login` | `loginBodySchema` | 200 `sessionSchema` · 401 `CREDENCIAIS_INVALIDAS` · 422 `VALIDACAO` · 429 `MUITAS_TENTATIVAS` | na API |
 | GET | `/v1/me` | | 200 `userSchema` · 401 `NAO_AUTENTICADO` | na API |
-| GET | `/v1/customers` | `customerFiltersSchema` (query) | 200 `pageOf(customerSchema)` | contrato |
-| GET | `/v1/customers/{id}` | | 200 `customerSchema` · 404 `NAO_ENCONTRADO` | contrato |
-| POST | `/v1/customers` | `customerInputSchema` | 201 `customerSchema` · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` | contrato |
-| PUT | `/v1/customers/{id}` | `customerInputSchema` | 200 `customerSchema` · 404 · 409 · 422 | contrato |
-| PATCH | `/v1/customers/{id}/status` | `customerStatusChangeSchema` | 200 `customerSchema` · 404 | contrato |
+| GET | `/v1/customers` | `customerFiltersSchema` (query: página, busca, filtros e ordenação) | 200 `pageOf(customerSchema)` · 403 `SEM_PERMISSAO` | na API |
+| GET | `/v1/customers/{id}` | | 200 `customerSchema` · 404 `NAO_ENCONTRADO` (também fora do escopo do perfil) | na API |
+| POST | `/v1/customers` | `customerInputSchema` | 201 `customerSchema` · 403 · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` | na API |
+| PUT | `/v1/customers/{id}` | `customerInputSchema` | 200 `customerSchema` · 403 · 404 · 409 · 422 | na API |
+| PATCH | `/v1/customers/{id}/status` | `customerStatusChangeSchema` | 200 `customerSchema` · 403 · 404 · 409 `TRANSICAO_INVALIDA` | na API |
 | POST | `/v1/customers/{id}/rejection` | `customerRejectionSchema` | 200 `customerSchema` · 404 · 409 | contrato |
+| GET | `/v1/routes/today` | | 200 `routeDetailSchema` · 403 · 404 `SEM_ROTA_HOJE` | na API |
+| GET | `/v1/routes/{id}` | | 200 `routeDetailSchema` · 403 · 404 | na API |
+| GET | `/v1/routes` | `routeFiltersSchema` (query) | 200 `pageOf(routeSchema)` · 403 | na API |
 | POST | `/v1/routes` | `createRouteBodySchema` | 201 `routeSchema` · 409 · 422 | contrato |
 | POST | `/v1/visits/{id}/check-in` | `checkInBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
 | POST | `/v1/visits/{id}/check-out` | `checkOutBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
@@ -70,6 +73,8 @@ Os caminhos desta tabela são a proposta do contrato; cada ticket de API os conf
 | `MUITAS_TENTATIVAS` | 429 | Muitas tentativas de login (certas ou erradas) do mesmo endereço em pouco tempo |
 | `ERRO_INTERNO` | 500 | Falha inesperada; a mensagem interna não é exposta |
 | `DOCUMENTO_JA_CADASTRADO` | 409 | Já existe cliente com o mesmo CPF/CNPJ |
+| `TRANSICAO_INVALIDA` | 409 | Mudança de estado que o cliente não admite (ex.: inativar prospecção pendente) |
+| `SEM_ROTA_HOJE` | 404 | O Vendedor não tem rota montada para o dia |
 
 ## Schemas novos (em inglês) e antigos (em português)
 

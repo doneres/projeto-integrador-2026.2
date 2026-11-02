@@ -56,6 +56,27 @@ describe('documentação', () => {
     expect(spec.openapi).toMatch(/^3\./)
     expect(spec.paths['/health'].get.responses['200']).toBeDefined()
   })
+
+  it('documenta as rotas de clientes e de rotas do dia', async () => {
+    const spec = (await app.inject({ method: 'GET', url: '/docs/openapi.json' })).json()
+
+    const documented = Object.entries(spec.paths as Record<string, object>).flatMap(
+      ([path, methods]) => Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),
+    )
+    expect(documented).toEqual(
+      expect.arrayContaining([
+        'GET /v1/customers',
+        'POST /v1/customers',
+        'GET /v1/customers/{id}',
+        'PUT /v1/customers/{id}',
+        'PATCH /v1/customers/{id}/status',
+        'GET /v1/routes',
+        'GET /v1/routes/today',
+        'GET /v1/routes/{id}',
+      ]),
+    )
+    expect(spec.paths['/v1/routes/today'].get.responses['200']).toBeDefined()
+  })
 })
 
 describe('erros', () => {
