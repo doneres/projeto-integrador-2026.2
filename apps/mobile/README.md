@@ -1,6 +1,6 @@
 # AXIS: App do Vendedor
 
-Aplicativo usado pelo Vendedor em campo para executar a rota do dia, fazer check-in e check-out, auditar o ponto de venda e emitir pedidos. Este é o esqueleto: abre no Expo Go, tem a estrutura de camadas e os componentes base acessíveis, e fica pronto para receber as telas.
+Aplicativo usado pelo Vendedor em campo para executar a rota do dia, fazer check-in e check-out, auditar o ponto de venda e emitir pedidos. Abre no Expo Go, tem a estrutura de camadas, os componentes base acessíveis e o login contra a API real.
 
 ## Stack
 
@@ -44,6 +44,14 @@ Só a URL da API entra no app. O Expo embute no bundle tudo que começa com `EXP
 
 No Expo Go, `localhost` aponta para o próprio celular. Use o **IP da sua máquina na rede**. O `.env.example` mostra o formato; o `.env` real não vai para o Git. O app valida a variável ao ler o ambiente (`getEnv` em `src/services/env.ts`) e falha com mensagem clara se ela faltar.
 
+## Login e sessão
+
+- O Vendedor entra com e-mail ou matrícula e senha (`POST /v1/auth/login`, validado com `loginBodySchema` de `@axis/contracts`). Outros perfis veem a mensagem de que o app é do Vendedor e não entram.
+- O token (JWT de 8 h, sem refresh) fica no **armazenamento seguro do aparelho** (`expo-secure-store`: Keychain no iOS, Keystore no Android). Rotas autenticadas usam `Stack.Protected` do Expo Router: sem sessão só existe o login.
+- A sessão acaba ao **Sair**, em qualquer **401** de chamada autenticada (um 401 tardio de um token antigo não derruba uma sessão nova) e quando as 8 h vencem (com o app aberto ou depois de voltar do segundo plano).
+- O login espera até **90 s** pela resposta inteira (a API no Render Free dorme) e, passados 4 s sem resposta, mostra "Acordando o servidor…".
+- **Trocar a URL da API:** toque longo no logo AXIS da tela de login. A URL fica guardada no aparelho; "Usar a do app" volta para `EXPO_PUBLIC_API_URL`. Endereço `http://` mostra um aviso (a senha viaja sem criptografia): serve só para a rede local de desenvolvimento. Sem URL guardada nem de ambiente, o login manda o Vendedor para esse toque longo.
+
 ## Scripts
 
 Dentro de `apps/mobile` (ou na raiz, com `pnpm --filter @axis/mobile <script>`):
@@ -64,7 +72,7 @@ app/            rotas do Expo Router (arquivos finos que só exportam uma tela)
 src/
   screens/      composição das telas, sem regra de negócio
   components/   componentes base (NativeWind), sem acesso a dados
-  hooks/        ligam o React a repositories e services
+  hooks/        ligam o React a repositories e services (sessão, login, URL da API)
   repositories/ acesso a dados (API; depois SQLite com outbox)
   services/     regras e integrações (ambiente, cliente HTTP, GPS, câmera)
   theme/        tokens de cor e verificação de contraste
@@ -85,4 +93,4 @@ Textos da interface e caminhos de `app/` ficam em português; o código (nomes, 
 
 ## Testes
 
-Os testes ficam ao lado do arquivo testado (`*.test.ts`, `*.test.tsx`). Para rodar um arquivo só: `pnpm test src/components`.
+Os testes ficam ao lado do arquivo testado (`*.test.ts`, `*.test.tsx`). Apoio só de teste (repositórios falsos, armazenamento em memória) fica em `test/` e é importado por `@test/`; nada disso entra em `src/`. Para rodar um arquivo só: `pnpm test src/components`.

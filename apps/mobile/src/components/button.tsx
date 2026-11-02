@@ -17,6 +17,11 @@ const containerStyles: Record<Variant, string> = {
   danger: 'bg-danger',
 }
 
+// Desabilitado não usa opacidade (o texto perderia o contraste de 4,5:1): troca de cor, e o
+// contorno e o estado anunciado mantêm a diferença sem depender só dela.
+const DISABLED_CONTAINER = 'border-2 border-border bg-surface'
+const DISABLED_TEXT = 'text-textMuted'
+
 const textStyles: Record<Variant, string> = {
   primary: 'text-onPrimary',
   secondary: 'text-primary',
@@ -39,9 +44,11 @@ export function Button({
       disabled={disabled}
       onPress={onPress}
       style={{ minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET }}
-      className={`items-center justify-center rounded-lg px-4 py-3 ${containerStyles[variant]} ${disabled ? 'opacity-50' : ''}`}
+      className={`items-center justify-center rounded-lg px-4 py-3 ${disabled ? DISABLED_CONTAINER : containerStyles[variant]}`}
     >
-      <Text className={`text-base font-semibold ${textStyles[variant]}`}>{title}</Text>
+      <Text className={`text-base font-semibold ${disabled ? DISABLED_TEXT : textStyles[variant]}`}>
+        {title}
+      </Text>
     </Pressable>
   )
 }

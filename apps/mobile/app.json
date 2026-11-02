@@ -12,7 +12,11 @@
     "ios": {
       "bundleIdentifier": "br.edu.pucgoias.axis"
     },
-    "plugins": ["expo-router", ["expo-build-properties", { "android": { "minSdkVersion": 26 } }]],
+    "plugins": [
+      "expo-router",
+      ["expo-build-properties", { "android": { "minSdkVersion": 26 } }],
+      "expo-secure-store"
+    ],
     "experiments": {
       "typedRoutes": true
     }

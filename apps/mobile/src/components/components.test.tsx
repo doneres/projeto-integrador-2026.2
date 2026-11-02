@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native'
 import { Button } from './button'
 import { Checkbox } from './checkbox'
 import { ListItem } from './list-item'
+import { Logo } from './logo'
+import { Notice } from './notice'
 import { TextField } from './text-field'
 import { MIN_TOUCH_TARGET } from './touch-target'
 
@@ -99,6 +101,23 @@ describe('Button', () => {
     await fireEvent.press(button)
     expect(onPress).not.toHaveBeenCalled()
     expect(button).toBeDisabled()
+  })
+
+  it('desabilitado troca de cor em vez de só esmaecer (contraste do texto)', async () => {
+    await render(
+      <Button
+        title="Salvar"
+        accessibilityLabel="Salvar cliente"
+        accessibilityRole="button"
+        onPress={jest.fn()}
+        disabled
+      />,
+    )
+    const className = screen.getByText('Salvar').props.className as string
+    expect(className).toContain('text-textMuted')
+    expect(screen.getByRole('button', { name: 'Salvar cliente' }).props.className).not.toContain(
+      'opacity-50',
+    )
   })
 })
 
@@ -201,5 +220,41 @@ describe('rótulo e papel de acessibilidade obrigatórios', () => {
       </>
     )
     expect(naoExecuta).toBeInstanceOf(Function)
+  })
+})
+
+describe('Logo', () => {
+  it('toque longo chama onLongPress e se anuncia como botão com dica', async () => {
+    const onLongPress = jest.fn()
+    await render(<Logo onLongPress={onLongPress} accessibilityHint="Toque longo para configurar" />)
+    const logo = screen.getByRole('button', { name: 'AXIS' })
+    await fireEvent(logo, 'longPress')
+    expect(onLongPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('leitor de tela aciona a ação longpress', async () => {
+    const onLongPress = jest.fn()
+    await render(<Logo onLongPress={onLongPress} />)
+    await fireEvent(screen.getByRole('button', { name: 'AXIS' }), 'accessibilityAction', {
+      nativeEvent: { actionName: 'longpress' },
+    })
+    expect(onLongPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('sem onLongPress é só um título', async () => {
+    await render(<Logo />)
+    expect(screen.getByRole('header', { name: 'AXIS' })).toBeOnTheScreen()
+    expect(screen.getByRole('header', { name: 'AXIS' })).toHaveStyle({
+      minHeight: MIN_TOUCH_TARGET,
+    })
+  })
+})
+
+describe('Notice', () => {
+  it('é um alerta anunciado na hora, com texto "Erro:" além do ícone', async () => {
+    await render(<Notice message="Senha incorreta" />)
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveProp('accessibilityLiveRegion', 'assertive')
+    expect(screen.getByText('Erro: Senha incorreta')).toBeOnTheScreen()
   })
 })
