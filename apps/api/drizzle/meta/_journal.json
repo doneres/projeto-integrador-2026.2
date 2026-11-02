@@ -8,6 +8,20 @@
       "when": 1793633594464,
       "tag": "0000_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793634398636,
+      "tag": "0001_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793635199420,
+      "tag": "0002_coordinator_rule",
+      "breakpoints": true
     }
   ]
 }

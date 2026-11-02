@@ -17,3 +17,6 @@ export function urlForDatabase(serverUrl: string, database: string): string {
   url.pathname = `/${database}`
   return url.toString()
 }
+
+/** Segredo do JWT nos testes. Não é um segredo de verdade: só precisa ter o tamanho mínimo. */
+export const TEST_JWT_SECRET = 'segredo-de-teste-com-pelo-menos-32-caracteres'

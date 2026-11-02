@@ -13,5 +13,5 @@ export type DatabaseConnection = {
 /** Abre o pool de conexões. Não conecta até a primeira consulta. */
 export function createDatabase(url: string): DatabaseConnection {
   const sql = postgres(url)
-  return { db: drizzle(sql, { schema }), close: () => sql.end() }
+  return { db: drizzle(sql, { schema, casing: 'snake_case' }), close: () => sql.end() }
 }

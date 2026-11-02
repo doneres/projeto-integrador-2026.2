@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
+import { TEST_JWT_SECRET } from '../test/support/config'
 import { createTestDatabase, type TestDatabase } from '../test/support/database'
 import { buildApp } from './app'
 
@@ -11,7 +12,7 @@ let app: Awaited<ReturnType<typeof buildApp>>
 
 beforeAll(async () => {
   testDb = await createTestDatabase()
-  app = await buildApp({ db: testDb.db })
+  app = await buildApp({ db: testDb.db, auth: { jwtSecret: TEST_JWT_SECRET } })
   app
     .withTypeProvider<ZodTypeProvider>()
     .post(

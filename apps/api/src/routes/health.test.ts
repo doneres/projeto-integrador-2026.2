@@ -1,5 +1,6 @@
 import { healthSchema } from '@axis/contracts'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { TEST_JWT_SECRET } from '../../test/support/config'
 import { createTestDatabase, type TestDatabase } from '../../test/support/database'
 import { buildApp } from '../app'
 import { createDatabase } from '../db/client'
@@ -12,8 +13,8 @@ let appWithoutDatabase: Awaited<ReturnType<typeof buildApp>>
 
 beforeAll(async () => {
   testDb = await createTestDatabase()
-  app = await buildApp({ db: testDb.db })
-  appWithoutDatabase = await buildApp({ db: unreachable.db })
+  app = await buildApp({ db: testDb.db, auth: { jwtSecret: TEST_JWT_SECRET } })
+  appWithoutDatabase = await buildApp({ db: unreachable.db, auth: { jwtSecret: TEST_JWT_SECRET } })
 })
 afterAll(async () => {
   await Promise.all([app.close(), appWithoutDatabase.close()])

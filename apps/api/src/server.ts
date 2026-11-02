@@ -13,6 +13,10 @@ async function main() {
   const { db, close } = createDatabase(env.databaseUrl)
   const app = await buildApp({
     db,
+    auth: { jwtSecret: env.jwtSecret },
+    // O Render põe um proxy na frente: sem isso todos os clientes teriam o mesmo endereço. Confia
+    // só nesse salto: com `true`, o cliente forjaria o X-Forwarded-For e furaria o limite do login.
+    trustProxy: env.nodeEnv === 'production' ? 1 : 0,
     logger: { level: env.nodeEnv === 'production' ? 'info' : 'debug' },
   })
 

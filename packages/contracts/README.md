@@ -36,19 +36,26 @@ O pacote é consumido direto do código-fonte TypeScript, sem etapa de build.
 | CPF/CNPJ | Sem máscara, com dígitos verificadores conferidos; o CNPJ aceita o formato alfanumérico emitido desde julho de 2026 | `documentoSchema`, `normalizarDocumento` |
 | CEP e telefone | Só dígitos; a máscara é da interface | `cepSchema`, `telefoneSchema`, `apenasDigitos` |
 
-## Endpoints (provisórios)
+## Endpoints
 
-Todas as rotas, menos o login e o `/health`, exigem `Authorization: Bearer <token>` e respondem `401 NAO_AUTENTICADO` sem um token válido.
+Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exigem `Authorization: Bearer <token>` e respondem `401 NAO_AUTENTICADO` sem um token válido. A coluna **Situação** diz se a rota já existe na API ou só tem o contrato pronto.
 
-| Método | Caminho | Entrada | Respostas |
-|---|---|---|---|
-| POST | `/v1/auth/login` | `loginSchema` | 200 `sessaoSchema` · 401 `CREDENCIAIS_INVALIDAS` |
-| GET | `/health` (sem `/v1` e sem login) | | 200 `healthSchema`; não consulta o banco |
-| GET | `/v1/clientes` | `filtrosClientesSchema` (query) | 200 `paginaDe(clienteSchema)` |
-| GET | `/v1/clientes/{id}` | | 200 `clienteSchema` · 404 `NAO_ENCONTRADO` |
-| POST | `/v1/clientes` | `dadosClienteSchema` | 201 `clienteSchema` · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` |
-| PUT | `/v1/clientes/{id}` | `dadosClienteSchema` | 200 `clienteSchema` · 404 · 409 · 422 |
-| PATCH | `/v1/clientes/{id}/status` | `alteracaoStatusClienteSchema` | 200 `clienteSchema` · 404 |
+| Método | Caminho | Entrada | Respostas | Situação |
+|---|---|---|---|---|
+| GET | `/health` (sem `/v1` e sem login) | | 200 `healthSchema`; não consulta o banco | na API |
+| POST | `/v1/auth/login` | `loginBodySchema` | 200 `sessionSchema` · 401 `CREDENCIAIS_INVALIDAS` · 422 `VALIDACAO` · 429 `MUITAS_TENTATIVAS` | na API |
+| GET | `/v1/me` | | 200 `userSchema` · 401 `NAO_AUTENTICADO` | na API |
+| GET | `/v1/customers` | `customerFiltersSchema` (query) | 200 `pageOf(customerSchema)` | contrato |
+| GET | `/v1/customers/{id}` | | 200 `customerSchema` · 404 `NAO_ENCONTRADO` | contrato |
+| POST | `/v1/customers` | `customerInputSchema` | 201 `customerSchema` · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` | contrato |
+| PUT | `/v1/customers/{id}` | `customerInputSchema` | 200 `customerSchema` · 404 · 409 · 422 | contrato |
+| PATCH | `/v1/customers/{id}/status` | `customerStatusChangeSchema` | 200 `customerSchema` · 404 | contrato |
+| POST | `/v1/customers/{id}/rejection` | `customerRejectionSchema` | 200 `customerSchema` · 404 · 409 | contrato |
+| POST | `/v1/routes` | `createRouteBodySchema` | 201 `routeSchema` · 409 · 422 | contrato |
+| POST | `/v1/visits/{id}/check-in` | `checkInBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
+| POST | `/v1/visits/{id}/check-out` | `checkOutBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
+
+Os caminhos desta tabela são a proposta do contrato; cada ticket de API os confirma ao implementar. O painel web ainda chama as rotas antigas em português (`/v1/clientes`, corpo `identificador`/`senha`) e migra na etapa de remoção.
 
 ## Códigos de erro
 
@@ -60,15 +67,25 @@ Todas as rotas, menos o login e o `/health`, exigem `Authorization: Bearer <toke
 | `SEM_PERMISSAO` | 403 | O perfil do usuário não pode fazer a ação |
 | `NAO_ENCONTRADO` | 404 | O recurso não existe |
 | `REQUISICAO_INVALIDA` | 4xx | Requisição malformada que não tem código próprio (ex.: JSON quebrado) |
+| `MUITAS_TENTATIVAS` | 429 | Muitas tentativas de login (certas ou erradas) do mesmo endereço em pouco tempo |
 | `ERRO_INTERNO` | 500 | Falha inesperada; a mensagem interna não é exposta |
 | `DOCUMENTO_JA_CADASTRADO` | 409 | Já existe cliente com o mesmo CPF/CNPJ |
 
-## Entidades
+## Schemas novos (em inglês) e antigos (em português)
 
-| Entidade | Situação |
-|---|---|
-| `Usuario` e `Sessao` | Provisórias: perfis da proposta da issue #20 |
-| `Cliente` | Provisória: campos da RF05/RF06, a confirmar na issue #26 |
+O contrato está numa migração expand–contract (ADR 0001): os schemas **novos**, em inglês e conforme o [modelo de dados](../../docs/05-modelo-dados/README.md), existem ao lado dos **antigos**, em português. Os antigos continuam exportados porque o painel web ainda os usa, e **serão removidos** quando o web migrar. Código novo (a API e o que vier) usa só os novos.
+
+| Assunto | Novos (inglês) | Antigos (português, a remover) |
+|---|---|---|
+| Usuário e login | `user.ts`: `roleSchema`, `userSchema`, `loginBodySchema`, `sessionSchema` | `auth.ts`: `perfilSchema`, `usuarioSchema`, `loginSchema`, `sessaoSchema` |
+| Cliente | `customer.ts`: `customerSchema`, `customerInputSchema`, `customerStatusChangeSchema`, `customerRejectionSchema`, `customerFiltersSchema` | `clientes.ts`: `clienteSchema`, `dadosClienteSchema`, `alteracaoStatusClienteSchema`, `filtrosClientesSchema` |
+| Rota | `route.ts`: `routeSchema`, `createRouteBodySchema` | não existia |
+| Visita | `visit.ts`: `visitSchema`, `checkInBodySchema`, `checkOutBodySchema`, `visitStatusOf` (estado derivado) | não existia |
+| Paginação | `pagination.ts`: `paginationSchema` (`?page&perPage`), `pageOf` (`{ items, total, page, perPage }`) | `comum.ts`: `paginacaoSchema`, `paginaDe` |
+
+Ficam como estão, por serem neutros ou convenções do #21: `idSchema`, `instanteSchema`, `dataCalendarioSchema`, `centavosSchema`, `documentoSchema`, `cepSchema`, `telefoneSchema`, `ufSchema`, `coordenadasSchema` (reaproveitadas pelos schemas novos) e o formato de erro `problemaSchema` (`codigo`, `erros`). O Problem Details segue com os campos em português porque o web já depende dele; renomeá-lo faz parte da etapa de remoção.
+
+Regras que os schemas novos já aplicam: coordenadas obrigatórias no cliente; motivo obrigatório na prospecção rejeitada; justificativa obrigatória no check-in fora do raio e nos desfechos `customer_closed` e `not_performed`; check-out só depois do check-in e junto com o desfecho; o mesmo cliente não repete numa rota.
 
 ## Testes
 

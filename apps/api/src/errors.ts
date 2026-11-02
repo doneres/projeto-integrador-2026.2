@@ -12,7 +12,21 @@ const TITLES: Record<number, string> = {
   404: 'Não encontrado',
   409: 'Conflito',
   422: 'Dados inválidos',
+  429: 'Muitas tentativas',
   500: 'Erro interno',
+}
+
+/** Erro esperado de uma rota: vira Problem Details com o status e o `codigo` informados. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly codigo: string
+
+  constructor(status: number, codigo: string, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.codigo = codigo
+  }
 }
 
 /** `instancePath` do Ajv ("/address/zip") vira o caminho do campo ("address.zip"). */
@@ -46,6 +60,19 @@ export function registerErrorHandling(app: FastifyInstance) {
         erros: error.validation.map(toFieldError),
       }
       return reply.code(422).type(PROBLEM_JSON).send(problem)
+    }
+
+    if (error instanceof ApiError) {
+      const problem: Problema = {
+        type: 'about:blank',
+        title: TITLES[error.status] ?? 'Erro',
+        status: error.status,
+        detail: error.message,
+        codigo: error.codigo,
+      }
+      // Só o token ausente ou inválido desafia com Bearer; a falha do login não.
+      if (error.codigo === 'NAO_AUTENTICADO') reply.header('WWW-Authenticate', 'Bearer')
+      return reply.code(error.status).type(PROBLEM_JSON).send(problem)
     }
 
     const status = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500
