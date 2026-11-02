@@ -13,6 +13,7 @@ async function main() {
   const { db, close } = createDatabase(env.databaseUrl)
   const app = await buildApp({
     db,
+    auth: { jwtSecret: env.jwtSecret },
     logger: { level: env.nodeEnv === 'production' ? 'info' : 'debug' },
   })
 

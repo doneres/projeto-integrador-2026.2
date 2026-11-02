@@ -43,6 +43,8 @@ Todas as rotas, menos o login e o `/health`, exigem `Authorization: Bearer <toke
 | Método | Caminho | Entrada | Respostas |
 |---|---|---|---|
 | POST | `/v1/auth/login` | `loginSchema` | 200 `sessaoSchema` · 401 `CREDENCIAIS_INVALIDAS` |
+| POST | `/v1/auth/login` (API, em inglês) | `loginBodySchema` | 200 `sessionSchema` · 401 `CREDENCIAIS_INVALIDAS` · 422 `VALIDACAO` |
+| GET | `/v1/me` | | 200 `userSchema` · 401 `NAO_AUTENTICADO` |
 | GET | `/health` (sem `/v1` e sem login) | | 200 `healthSchema`; não consulta o banco |
 | GET | `/v1/clientes` | `filtrosClientesSchema` (query) | 200 `paginaDe(clienteSchema)` |
 | GET | `/v1/clientes/{id}` | | 200 `clienteSchema` · 404 `NAO_ENCONTRADO` |
@@ -67,7 +69,8 @@ Todas as rotas, menos o login e o `/health`, exigem `Authorization: Bearer <toke
 
 | Entidade | Situação |
 |---|---|
-| `Usuario` e `Sessao` | Provisórias: perfis da proposta da issue #20 |
+| `Usuario` e `Sessao` | Provisórias, em português: perfis da proposta da issue #20; serão removidas |
+| `User`, `Role`, `LoginBody` e `Session` (`user.ts`) | Em inglês, conforme o modelo de dados (#26) e o ADR 0001; já usados pela API |
 | `Cliente` | Provisória: campos da RF05/RF06, a confirmar na issue #26 |
 
 ## Testes
