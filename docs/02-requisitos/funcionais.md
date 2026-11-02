@@ -22,8 +22,8 @@ Este documento especifica os Requisitos Funcionais (RF) do sistema **AXIS (Accou
 | ID | Nome | Descrição | Plataforma | Prioridade | Requisito Norteador |
 |---|---|---|---|---|---|
 | **RF01** | Autenticação de Usuário | Permitir que o usuário realize login informando e-mail/matrícula e senha, recebendo token JWT para acesso seguro. | Web / Mobile | **Must** | R2 |
-| **RF02** | Controle de Perfis e Permissões | Suportar ao menos 2 perfis de usuário com permissões distintas: **Gestor/Supervisor** (acesso administrativo via Web) e **Vendedor** (acesso restrito às suas rotas, clientes e visitas via Mobile). | Web / Mobile | **Must** | R2 |
-| **RF03** | Recuperação e Alteração de Senha | Permitir que o usuário altere sua senha de acesso ou solicite redefinição. | Web / Mobile | **Should** | R2 |
+| **RF02** | Controle de Perfis e Permissões | Suportar 4 perfis com permissões distintas (decididos na #20): **Vendedor** (Mobile; só as próprias rotas, clientes e visitas), **Coordenador** (Web; rotas, clientes e aprovação de prospecções da sua equipe), **Diretor** (Web; define as metas e vê todas as equipes) e **Administrador** (Web; cria contas, define perfis e parâmetros do sistema). Não há autocadastro. | Web / Mobile | **Must** | R2 |
+| **RF03** | Recuperação e Alteração de Senha | Permitir que o usuário logado altere a própria senha. A redefinição de senha esquecida é feita pelo Administrador no painel (sem envio de e-mail). | Web / Mobile | **Should** | R2 |
 | **RF04** | Encerramento de Sessão (Logout) | Permitir logout seguro invalidando o token localmente e encerrando a sessão ativa. | Web / Mobile | **Must** | R2 |
 
 ---
@@ -36,7 +36,7 @@ Este documento especifica os Requisitos Funcionais (RF) do sistema **AXIS (Accou
 | **RF06** | Busca e Filtros de Clientes | Permitir listagem de clientes com pesquisa por nome/CNPJ e filtros por região/bairro, status (ativo/inativo) e tipo (carteira/prospecção). | Web / Mobile | **Must** | R9 |
 | **RF07** | Autocompletar Endereço por CEP | Integrar com serviço externo de consulta de CEP (ViaCEP / BrasilAPI) para preenchimento automático do logradouro, bairro, cidade e UF durante o cadastro. | Web / Mobile | **Should** | R7 |
 | **RF08** | Cadastro de Prospecção em Campo | Permitir que o vendedor em campo cadastre um novo cliente prospectado capturando as coordenadas de GPS do local atual do aparelho. | Mobile | **Must** | R3, R8 |
-| **RF09** | Aprovação de Novos Clientes | Permitir que o supervisor avalie e aprove ou rejeite novos clientes cadastrados como prospecção pelos vendedores em campo. | Web | **Should** | R4 |
+| **RF09** | Aprovação de Novos Clientes | Permitir que o Coordenador aprove ou rejeite, com motivo, os clientes cadastrados como prospecção pelos vendedores da sua equipe (RN04). | Web | **Should** | R4 |
 
 ---
 
@@ -44,11 +44,11 @@ Este documento especifica os Requisitos Funcionais (RF) do sistema **AXIS (Accou
 
 | ID | Nome | Descrição | Plataforma | Prioridade | Requisito Norteador |
 |---|---|---|---|---|---|
-| **RF10** | Planejamento e Atribuição de Rotas | Permitir ao gestor criar uma rota diária/periódica selecionando clientes da carteira e atribuindo-a a um vendedor específico. | Web | **Must** | R3 |
+| **RF10** | Planejamento e Atribuição de Rotas | Permitir ao Coordenador criar a rota diária de um vendedor da sua equipe, selecionando clientes ativos da carteira e definindo manualmente a ordem das visitas (sem otimização automática nesta versão). | Web | **Must** | R3 |
 | **RF11** | Visualização da Rota do Dia | Exibir para o vendedor a lista ordenada de visitas programadas para o dia atual com status visual (*Pendente*, *Em Andamento*, *Concluída*, *Não Realizada*). | Mobile | **Must** | R1, R9 |
-| **RF12** | Check-in de Visita com Validação GPS | Permitir que o vendedor inicie a visita (Check-in), registrando data, hora e coordenadas de GPS. O sistema deve validar se o vendedor está dentro do raio permitido (20 m, ver RN01) do cliente. | Mobile | **Must** | R4, R8 |
+| **RF12** | Check-in de Visita com Validação GPS | Permitir que o vendedor inicie a visita (Check-in), registrando data, hora e coordenadas de GPS. O sistema deve validar se o vendedor está dentro do raio permitido (padrão de 100 m, ver RN01) do cliente. | Mobile | **Must** | R4, R8 |
 | **RF13** | Check-out com Registro de Desfecho | Permitir finalizar a visita (Check-out) registrando o horário de saída, resumo da visita, desfecho (*Venda Realizada*, *Apenas Auditoria*, *Cliente Fechado*, etc.) e justificativa caso não realizada. | Mobile | **Must** | R3 |
-| **RF14** | Operação Offline de Visitas | Permitir o registro de check-in, auditoria e pedidos mesmo sem conexão com a internet, armazenando os dados localmente no dispositivo para sincronização posterior. | Mobile | **Must** | R5 |
+| **RF14** | Operação Offline de Visitas | Permitir o registro de check-in, auditoria com fotos, pedido, check-out e cadastro de prospecção mesmo sem conexão com a internet, armazenando os dados localmente no dispositivo para sincronização posterior (RN05). | Mobile | **Must** | R5 |
 | **RF15** | Visualização de Rota no Mapa | Exibir o trajeto e os pontos de visitação do dia sobre um mapa interativo utilizando serviço externo de mapas (Google Maps / Mapbox / OpenStreetMap). | Web / Mobile | **Should** | R7 |
 
 ---
@@ -78,7 +78,7 @@ Este documento especifica os Requisitos Funcionais (RF) do sistema **AXIS (Accou
 
 | ID | Nome | Descrição | Plataforma | Prioridade | Requisito Norteador |
 |---|---|---|---|---|---|
-| **RF23** | Parametrização de Metas Comerciais | Permitir ao gestor cadastrar metas mensais/semanais por vendedor, combinando indicadores ponderados (Volume Financeiro de Vendas, Quantidade de Visitas Realizadas e Clientes Novos Prospectados). | Web | **Must** | R4 |
+| **RF23** | Parametrização de Metas Comerciais | Permitir ao Diretor cadastrar metas mensais por vendedor, combinando indicadores ponderados (Volume Financeiro de Vendas, Quantidade de Visitas Realizadas e Clientes Novos Prospectados). | Web | **Must** | R4 |
 | **RF24** | Dashboard Gerencial Consolidado | Exibir no painel Web gráficos e cartões com indicadores consolidados (taxa de visitas realizadas vs planejadas, faturamento do período, ranking de vendas e mapa de calor de cobertura). | Web | **Must** | R9 |
 | **RF25** | Acompanhamento Individual de Metas | Exibir no aplicativo mobile uma tela de resumo do vendedor com a porcentagem de atingimento de suas metas no ciclo corrente. | Mobile | **Should** | R9 |
 
