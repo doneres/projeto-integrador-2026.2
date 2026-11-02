@@ -5,34 +5,33 @@ import { buildApp } from '../app'
 import { createDatabase } from '../db/client'
 
 let testDb: TestDatabase
+let app: Awaited<ReturnType<typeof buildApp>>
+// Banco inalcançável: qualquer consulta falharia e o /health viraria 500.
+const unreachable = createDatabase('postgres://nobody:nobody@127.0.0.1:1/none')
+let appWithoutDatabase: Awaited<ReturnType<typeof buildApp>>
 
 beforeAll(async () => {
   testDb = await createTestDatabase()
+  app = await buildApp({ db: testDb.db })
+  appWithoutDatabase = await buildApp({ db: unreachable.db })
 })
 afterAll(async () => {
+  await Promise.all([app.close(), appWithoutDatabase.close()])
+  await unreachable.close()
   await testDb.drop()
 })
 
 describe('GET /health', () => {
   it('responde 200 com o status no formato do contrato', async () => {
-    const app = await buildApp({ db: testDb.db })
-
     const response = await app.inject({ method: 'GET', url: '/health' })
 
     expect(response.statusCode).toBe(200)
     expect(healthSchema.parse(response.json())).toEqual({ status: 'ok' })
-    await app.close()
   })
 
   it('responde sem consultar o banco', async () => {
-    // Banco inalcançável: qualquer consulta falharia e o /health viraria 500.
-    const unreachable = createDatabase('postgres://nobody:nobody@127.0.0.1:1/none')
-    const app = await buildApp({ db: unreachable.db })
-
-    const response = await app.inject({ method: 'GET', url: '/health' })
+    const response = await appWithoutDatabase.inject({ method: 'GET', url: '/health' })
 
     expect(response.statusCode).toBe(200)
-    await app.close()
-    await unreachable.close()
   })
 })

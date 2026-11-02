@@ -5,6 +5,7 @@ import { TEMPLATE_DATABASE, TEST_DATABASE_PREFIX, TEST_SERVER_URL, urlForDatabas
 
 /** Roda uma vez antes dos testes: migra o banco modelo que cada arquivo de teste vai copiar. */
 export default async function setup() {
+  assertLocalServer()
   const admin = postgres(TEST_SERVER_URL, { max: 1, onnotice: () => {} })
   try {
     const stale = await admin<{ datname: string }[]>`
@@ -23,4 +24,12 @@ export default async function setup() {
     await admin.end()
   }
   await runMigrations(urlForDatabase(TEST_SERVER_URL, TEMPLATE_DATABASE), MIGRATIONS_FOLDER)
+}
+
+/** O setup apaga os bancos `axis_test_*`: nunca rode contra um servidor que não seja a máquina local. */
+function assertLocalServer() {
+  const { hostname } = new URL(TEST_SERVER_URL)
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(hostname)) {
+    throw new Error(`DATABASE_URL aponta para ${hostname}; os testes só rodam num Postgres local.`)
+  }
 }

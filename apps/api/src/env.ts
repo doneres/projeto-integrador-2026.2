@@ -31,7 +31,7 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
   const parsed = envSchema.safeParse(source)
   if (!parsed.success) {
     throw new EnvError(
-      parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${describe(issue, source)}`),
+      parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${messageFor(issue, source)}`),
     )
   }
   const env = parsed.data
@@ -43,7 +43,7 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
   }
 }
 
-function describe(issue: z.core.$ZodIssue, source: Record<string, string | undefined>): string {
+function messageFor(issue: z.core.$ZodIssue, source: Record<string, string | undefined>): string {
   const name = String(issue.path[0])
   return source[name] === undefined ? 'variável ausente' : issue.message
 }

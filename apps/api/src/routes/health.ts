@@ -12,7 +12,7 @@ export async function healthRoutes(app: FastifyInstance) {
     {
       schema: {
         tags: ['health'],
-        summary: 'Saúde da API',
+        summary: 'API health',
         response: { 200: healthSchema },
       },
     },
