@@ -1,0 +1,23 @@
+# Postgres local para desenvolvimento e testes. Uso: pnpm db:up
+# Se a porta 5432 já estiver ocupada, suba com POSTGRES_PORT=5433 e ajuste a porta nas URLs do .env.
+name: axis
+
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: axis
+      POSTGRES_PASSWORD: axis
+      POSTGRES_DB: axis
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U axis -d axis']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres-data:

@@ -38,11 +38,12 @@ O pacote é consumido direto do código-fonte TypeScript, sem etapa de build.
 
 ## Endpoints (provisórios)
 
-Todas as rotas, menos o login, exigem `Authorization: Bearer <token>` e respondem `401 NAO_AUTENTICADO` sem um token válido.
+Todas as rotas, menos o login e o `/health`, exigem `Authorization: Bearer <token>` e respondem `401 NAO_AUTENTICADO` sem um token válido.
 
 | Método | Caminho | Entrada | Respostas |
 |---|---|---|---|
 | POST | `/v1/auth/login` | `loginSchema` | 200 `sessaoSchema` · 401 `CREDENCIAIS_INVALIDAS` |
+| GET | `/health` (sem `/v1` e sem login) | | 200 `healthSchema`; não consulta o banco |
 | GET | `/v1/clientes` | `filtrosClientesSchema` (query) | 200 `paginaDe(clienteSchema)` |
 | GET | `/v1/clientes/{id}` | | 200 `clienteSchema` · 404 `NAO_ENCONTRADO` |
 | POST | `/v1/clientes` | `dadosClienteSchema` | 201 `clienteSchema` · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` |
@@ -58,6 +59,8 @@ Todas as rotas, menos o login, exigem `Authorization: Bearer <token>` e responde
 | `CREDENCIAIS_INVALIDAS` | 401 | E-mail/matrícula ou senha incorretos no login |
 | `SEM_PERMISSAO` | 403 | O perfil do usuário não pode fazer a ação |
 | `NAO_ENCONTRADO` | 404 | O recurso não existe |
+| `REQUISICAO_INVALIDA` | 4xx | Requisição malformada que não tem código próprio (ex.: JSON quebrado) |
+| `ERRO_INTERNO` | 500 | Falha inesperada; a mensagem interna não é exposta |
 | `DOCUMENTO_JA_CADASTRADO` | 409 | Já existe cliente com o mesmo CPF/CNPJ |
 
 ## Entidades

@@ -7,6 +7,7 @@ packages:
 allowBuilds:
   '@parcel/watcher': false
   unrs-resolver: false
+  esbuild: false
 
 # Versões únicas para o monorepo inteiro. Nos package.json, use "catalog:".
 catalog:

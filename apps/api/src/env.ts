@@ -1,0 +1,49 @@
+import { z } from 'zod'
+
+const postgresUrl = z.url({ protocol: /^postgres(ql)?$/, message: 'deve ser uma URL postgres://' })
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  DATABASE_URL: postgresUrl,
+  DATABASE_URL_UNPOOLED: postgresUrl,
+})
+
+export type Env = {
+  nodeEnv: 'development' | 'test' | 'production'
+  port: number
+  /** Conexão das requisições (no Neon, a URL com pooler). */
+  databaseUrl: string
+  /** Conexão direta, sem pooler: é a que roda as migrations. */
+  databaseUrlUnpooled: string
+}
+
+/** Lançado quando o ambiente está incompleto ou inválido; a mensagem lista cada variável. */
+export class EnvError extends Error {
+  constructor(problems: string[]) {
+    super(`Ambiente inválido (veja .env.example):\n${problems.map((p) => `  - ${p}`).join('\n')}`)
+    this.name = 'EnvError'
+  }
+}
+
+/** Valida o ambiente e recusa iniciar se faltar variável ou se alguma estiver inválida. */
+export function loadEnv(source: Record<string, string | undefined>): Env {
+  const parsed = envSchema.safeParse(source)
+  if (!parsed.success) {
+    throw new EnvError(
+      parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${describe(issue, source)}`),
+    )
+  }
+  const env = parsed.data
+  return {
+    nodeEnv: env.NODE_ENV,
+    port: env.PORT,
+    databaseUrl: env.DATABASE_URL,
+    databaseUrlUnpooled: env.DATABASE_URL_UNPOOLED,
+  }
+}
+
+function describe(issue: z.core.$ZodIssue, source: Record<string, string | undefined>): string {
+  const name = String(issue.path[0])
+  return source[name] === undefined ? 'variável ausente' : issue.message
+}

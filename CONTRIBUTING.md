@@ -47,6 +47,8 @@ O repositório é um monorepo com pnpm (Node.js 24, versão em `.nvmrc`). Antes 
     pnpm typecheck   # checagem de tipos de todas as frentes
     pnpm test        # testes automatizados
 
+Os testes da API usam um Postgres real: rode `pnpm db:up` antes (veja [`apps/api`](apps/api/README.md)).
+
 Para corrigir a formatação e organizar os imports automaticamente: `pnpm lint:fix`.
 
 O CI roda essas mesmas verificações, mais o build, em todo PR para a `main`.

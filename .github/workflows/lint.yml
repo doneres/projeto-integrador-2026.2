@@ -10,6 +10,24 @@ jobs:
   verificar:
     name: Lint, tipos, testes e build
     runs-on: ubuntu-latest
+    env:
+      # Postgres dos testes de integração da API (o service abaixo).
+      DATABASE_URL: postgres://axis:axis@localhost:5432/axis
+    services:
+      postgres:
+        # Mesma imagem do compose.yaml; mantenha as duas fixadas na mesma versão.
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: axis
+          POSTGRES_PASSWORD: axis
+          POSTGRES_DB: axis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U axis -d axis"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
