@@ -6,11 +6,11 @@ import {
   errosDeValidacao,
   type FiltrosClientes,
   filtrosClientesSchema,
-  loginSchema,
+  loginBodySchema,
   normalizarDocumento,
   type Pagina,
-  type Sessao,
-  type Usuario,
+  type Session,
+  type User,
 } from '@axis/contracts'
 import { delay, HttpResponse, http } from 'msw'
 import { clientesMock, SENHA_DEMO, usuariosMock } from './data'
@@ -35,7 +35,7 @@ function problema(
   )
 }
 
-function usuarioDaRequisicao(request: Request): Usuario | undefined {
+function usuarioDaRequisicao(request: Request): User | undefined {
   const cabecalho = request.headers.get('Authorization') ?? ''
   if (!cabecalho.startsWith(PREFIXO_DO_TOKEN)) {
     return undefined
@@ -88,23 +88,23 @@ function validacao(erros: ErroDeCampo[]) {
 export const handlers = [
   http.post('/v1/auth/login', async ({ request }) => {
     await delay(400)
-    const corpo = loginSchema.safeParse(await request.json().catch(() => undefined))
+    const corpo = loginBodySchema.safeParse(await request.json().catch(() => undefined))
     if (!corpo.success) {
       return validacao(errosDeValidacao(corpo.error))
     }
-    const { identificador, senha } = corpo.data
+    const { identifier, password } = corpo.data
     const usuario = usuariosMock.find(
-      (u) => u.email.toLowerCase() === identificador.toLowerCase() || u.matricula === identificador,
+      (u) => u.email.toLowerCase() === identifier.toLowerCase() || u.registration === identifier,
     )
-    if (!usuario || senha !== SENHA_DEMO) {
+    if (!usuario || password !== SENHA_DEMO) {
       return problema(401, 'CREDENCIAIS_INVALIDAS', 'Credenciais inválidas', {
         detail: 'E-mail/matrícula ou senha incorretos.',
       })
     }
-    const expiraEm = new Date(Date.now() + DURACAO_DA_SESSAO_MS)
+    const expiresAt = new Date(Date.now() + DURACAO_DA_SESSAO_MS)
       .toISOString()
       .replace(/\.\d+Z$/, 'Z')
-    const sessao: Sessao = { token: `token-simulado-${usuario.id}`, expiraEm, usuario }
+    const sessao: Session = { token: `token-simulado-${usuario.id}`, expiresAt, user: usuario }
     return HttpResponse.json(sessao)
   }),
 

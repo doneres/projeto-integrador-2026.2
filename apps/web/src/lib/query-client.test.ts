@@ -21,13 +21,14 @@ describe('tratarErroGlobal', () => {
   it('encerra a sessão quando a API responde 401', () => {
     iniciarSessao({
       token: 'vencido',
-      expiraEm: '2999-01-01T00:00:00Z',
-      usuario: {
+      expiresAt: '2999-01-01T00:00:00Z',
+      user: {
         id: '0192f4a0-0000-7000-8000-0000000000a1',
-        nome: 'Maria Souza',
+        name: 'Maria Souza',
         email: 'gestor@axis.example',
-        matricula: '1001',
-        perfil: 'coordenador',
+        registration: '1001',
+        role: 'coordinator',
+        coordinatorId: null,
       },
     })
     tratarErroGlobal(new ApiError({ status: 401, codigo: 'NAO_AUTENTICADO', mensagem: '' }))

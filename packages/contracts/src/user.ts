@@ -7,6 +7,9 @@ import { idSchema, instanteSchema } from './comum'
 export const roleSchema = z.enum(['seller', 'coordinator', 'director', 'administrator'])
 export type Role = z.infer<typeof roleSchema>
 
+/** Perfis que usam o painel web. O vendedor usa o app mobile (RF02). */
+export const PANEL_ROLES: readonly Role[] = ['coordinator', 'director', 'administrator']
+
 export const userSchema = z.object({
   id: idSchema,
   name: z.string().trim().min(1),

@@ -1,4 +1,4 @@
-import { type DadosLogin, loginSchema, PERFIS_DO_PAINEL } from '@axis/contracts'
+import { type LoginBody, loginBodySchema, PANEL_ROLES } from '@axis/contracts'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -18,9 +18,9 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<DadosLogin>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { identificador: '', senha: '' },
+  } = useForm<LoginBody>({
+    resolver: zodResolver(loginBodySchema),
+    defaultValues: { identifier: '', password: '' },
   })
 
   const voltarPara = (local.state as { voltarPara?: string } | null)?.voltarPara ?? '/'
@@ -32,7 +32,7 @@ export function LoginPage() {
     setAviso(null)
     login.mutate(dados, {
       onSuccess: (novaSessao) => {
-        if (!PERFIS_DO_PAINEL.includes(novaSessao.usuario.perfil)) {
+        if (!PANEL_ROLES.includes(novaSessao.user.role)) {
           setAviso('Seu perfil usa o AXIS pelo app do vendedor. O painel web é para a gestão.')
           return
         }
@@ -60,16 +60,16 @@ export function LoginPage() {
             rotulo="E-mail ou matrícula"
             autoComplete="username"
             placeholder="nome@empresa.com ou nº de registro"
-            erro={errors.identificador?.message}
-            {...register('identificador')}
+            erro={errors.identifier?.message}
+            {...register('identifier')}
           />
           <Campo
             rotulo="Senha"
             type="password"
             autoComplete="current-password"
             placeholder="Mínimo de 8 caracteres"
-            erro={errors.senha?.message}
-            {...register('senha')}
+            erro={errors.password?.message}
+            {...register('password')}
           />
           {mensagem && (
             <p role="alert" className="rounded-md border border-border bg-muted px-3 py-2 text-sm">

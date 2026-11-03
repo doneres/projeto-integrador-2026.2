@@ -14,11 +14,12 @@ const SECOES = [
   { caminho: '/usuarios', rotulo: 'Usuários' },
 ]
 
+// A API devolve o perfil em inglês (ADR 0001); o rótulo em português é da interface.
 const ROTULO_PERFIL = {
-  vendedor: 'Vendedor',
-  coordenador: 'Coordenador',
-  diretor: 'Diretor',
-  administrador: 'Administrador',
+  seller: 'Vendedor',
+  coordinator: 'Coordenador',
+  director: 'Diretor',
+  administrator: 'Administrador',
 } as const
 
 type Handle = { titulo?: string }
@@ -100,7 +101,7 @@ export function AppLayout() {
           <div className="flex items-center gap-3">
             {sessao && (
               <span className="hidden text-sm text-text-muted sm:inline">
-                {sessao.usuario.nome} · {ROTULO_PERFIL[sessao.usuario.perfil]}
+                {sessao.user.name} · {ROTULO_PERFIL[sessao.user.role]}
               </span>
             )}
             <Botao variante="secundario" onClick={sair}>
