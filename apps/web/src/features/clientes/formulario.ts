@@ -1,16 +1,8 @@
 import {
   apenasDigitos,
-  type Cliente,
-  cepSchema,
-  coordenadasSchema,
-  type DadosCliente,
-  dadosClienteSchema,
-  documentoSchema,
-  enderecoSchema,
+  type Customer,
+  customerInputSchema,
   normalizarDocumento,
-  type TipoCliente,
-  telefoneSchema,
-  ufSchema,
 } from '@axis/contracts'
 import { z } from 'zod'
 import { formatarCep, formatarDocumento, formatarTelefone } from '../../lib/formatacao'
@@ -24,77 +16,72 @@ function numeroDecimal(nome: string) {
     .pipe(z.number({ error: `A ${nome} deve ser um número. Ex.: -16.6869` }))
 }
 
+const campos = customerInputSchema.shape
+
 /**
  * Formulário de cliente: aceita o que o usuário digita (com máscara, vírgula decimal)
  * e entrega os dados no formato do contrato. As regras de validação vêm do @axis/contracts.
+ * Os nomes dos campos são os da API (ADR 0001), para que os erros de campo que ela devolve
+ * (ex.: `zipCode`) caiam direto no campo certo do formulário.
  */
 export const formularioClienteSchema = z.object({
-  razaoSocial: dadosClienteSchema.shape.razaoSocial,
-  nomeFantasia: dadosClienteSchema.shape.nomeFantasia,
-  documento: z.string().transform(normalizarDocumento).pipe(documentoSchema),
-  telefone: z.string().transform(apenasDigitos).pipe(telefoneSchema),
-  contato: dadosClienteSchema.shape.contato,
-  endereco: z.object({
-    cep: z.string().transform(apenasDigitos).pipe(cepSchema),
-    logradouro: enderecoSchema.shape.logradouro,
-    numero: enderecoSchema.shape.numero,
-    complemento: z
-      .string()
-      .trim()
-      .max(100, 'Use no máximo 100 caracteres')
-      .transform((valor) => valor || undefined),
-    bairro: enderecoSchema.shape.bairro,
-    cidade: enderecoSchema.shape.cidade,
-    uf: z.string().trim().toUpperCase().pipe(ufSchema),
-  }),
-  localizacao: z.object({
-    latitude: numeroDecimal('latitude').pipe(coordenadasSchema.shape.latitude),
-    longitude: numeroDecimal('longitude').pipe(coordenadasSchema.shape.longitude),
-  }),
+  legalName: campos.legalName,
+  tradeName: campos.tradeName,
+  document: z.string().transform(normalizarDocumento).pipe(campos.document),
+  phone: z.string().transform(apenasDigitos).pipe(campos.phone),
+  contactName: campos.contactName,
+  zipCode: z.string().transform(apenasDigitos).pipe(campos.zipCode),
+  street: campos.street,
+  number: campos.number,
+  complement: z
+    .string()
+    .trim()
+    .max(100, 'Use no máximo 100 caracteres')
+    .transform((valor) => valor || undefined),
+  district: campos.district,
+  city: campos.city,
+  state: z.string().trim().toUpperCase().pipe(campos.state),
+  latitude: numeroDecimal('latitude').pipe(campos.latitude),
+  longitude: numeroDecimal('longitude').pipe(campos.longitude),
 })
 
 export type ValoresFormularioCliente = z.input<typeof formularioClienteSchema>
+/** Saída do formulário: já é o corpo do POST/PUT /v1/customers (`CustomerInput`). */
 export type DadosFormularioCliente = z.output<typeof formularioClienteSchema>
 
 export const VALORES_INICIAIS: ValoresFormularioCliente = {
-  razaoSocial: '',
-  nomeFantasia: '',
-  documento: '',
-  telefone: '',
-  contato: '',
-  endereco: {
-    cep: '',
-    logradouro: '',
-    numero: '',
-    complemento: '',
-    bairro: '',
-    cidade: '',
-    uf: '',
-  },
-  localizacao: { latitude: '', longitude: '' },
+  legalName: '',
+  tradeName: '',
+  document: '',
+  phone: '',
+  contactName: '',
+  zipCode: '',
+  street: '',
+  number: '',
+  complement: '',
+  district: '',
+  city: '',
+  state: '',
+  latitude: '',
+  longitude: '',
 }
 
 /** Valores do formulário a partir de um cliente salvo, com as máscaras de exibição. */
-export function valoresDoCliente(cliente: Cliente): ValoresFormularioCliente {
+export function valoresDoCliente(cliente: Customer): ValoresFormularioCliente {
   return {
-    razaoSocial: cliente.razaoSocial,
-    nomeFantasia: cliente.nomeFantasia,
-    documento: formatarDocumento(cliente.documento),
-    telefone: formatarTelefone(cliente.telefone),
-    contato: cliente.contato,
-    endereco: {
-      ...cliente.endereco,
-      cep: formatarCep(cliente.endereco.cep),
-      complemento: cliente.endereco.complemento ?? '',
-    },
-    localizacao: {
-      latitude: String(cliente.localizacao.latitude),
-      longitude: String(cliente.localizacao.longitude),
-    },
+    legalName: cliente.legalName,
+    tradeName: cliente.tradeName,
+    document: formatarDocumento(cliente.document),
+    phone: formatarTelefone(cliente.phone),
+    contactName: cliente.contactName,
+    zipCode: formatarCep(cliente.zipCode),
+    street: cliente.street,
+    number: cliente.number,
+    complement: cliente.complement ?? '',
+    district: cliente.district,
+    city: cliente.city,
+    state: cliente.state,
+    latitude: String(cliente.latitude),
+    longitude: String(cliente.longitude),
   }
-}
-
-/** Corpo enviado à API. Clientes cadastrados pelo painel entram na carteira. */
-export function paraDadosCliente(valores: DadosFormularioCliente, tipo: TipoCliente): DadosCliente {
-  return { ...valores, tipo }
 }
