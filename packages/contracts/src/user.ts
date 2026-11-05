@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { idSchema, instanteSchema } from './comum'
+import { paginationSchema } from './pagination'
 
 // Contrato em inglês de usuário e login (ADR 0001, modelo de dados #26).
 
@@ -20,6 +21,13 @@ export const userSchema = z.object({
   coordinatorId: idSchema.nullable(),
 })
 export type User = z.infer<typeof userSchema>
+
+/**
+ * Query do GET /v1/users (#79): paginação e filtro por perfil. O painel usa `role=seller` para
+ * escolher o vendedor de uma rota. O escopo segue o do perfil: o Coordenador vê a sua Equipe.
+ */
+export const userFiltersSchema = paginationSchema.extend({ role: roleSchema.optional() })
+export type UserFilters = z.infer<typeof userFiltersSchema>
 
 /** Corpo do POST /v1/auth/login: e-mail ou matrícula, e senha. */
 export const loginBodySchema = z.object({
