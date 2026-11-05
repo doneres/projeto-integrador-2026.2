@@ -7,7 +7,7 @@ import { createMemoryStore } from './memory-store'
 export function sellerSession(overrides: Partial<Session['user']> = {}): Session {
   return {
     token: 'jwt-123',
-    expiresAt: '2026-11-02T20:00:00.000Z',
+    expiresAt: '2099-11-02T20:00:00.000Z',
     user: {
       id: '0198f2a0-7c1e-7000-8000-000000000001',
       name: 'Ana Souza',
