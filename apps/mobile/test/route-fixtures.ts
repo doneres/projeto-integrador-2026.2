@@ -9,33 +9,28 @@ function uuid(n: number): string {
   return `0198f2a0-7c1e-7000-8000-${String(n).padStart(12, '0')}`
 }
 
+/** Leitura do check-in feito no local, comum a todo estado depois de Pendente. */
+const CHECKED_IN = {
+  checkedInAt: '2026-11-06T12:00:00.000Z',
+  checkInLatitude: -23.55,
+  checkInLongitude: -46.63,
+  checkInAccuracyMeters: 8,
+  checkInDistanceMeters: 12,
+  checkInStatus: 'on_site',
+} satisfies Partial<RouteVisit>
+
 const VISIT_FIELDS: Record<VisitStatus, Partial<RouteVisit>> = {
   pending: {},
   in_progress: {
-    checkedInAt: '2026-11-06T12:00:00.000Z',
-    checkInLatitude: -23.55,
-    checkInLongitude: -46.63,
-    checkInAccuracyMeters: 8,
-    checkInDistanceMeters: 12,
-    checkInStatus: 'on_site',
+    ...CHECKED_IN,
   },
   completed: {
-    checkedInAt: '2026-11-06T12:00:00.000Z',
-    checkInLatitude: -23.55,
-    checkInLongitude: -46.63,
-    checkInAccuracyMeters: 8,
-    checkInDistanceMeters: 12,
-    checkInStatus: 'on_site',
+    ...CHECKED_IN,
     checkedOutAt: '2026-11-06T12:30:00.000Z',
     outcome: 'sale_made',
   },
   not_performed: {
-    checkedInAt: '2026-11-06T12:00:00.000Z',
-    checkInLatitude: -23.55,
-    checkInLongitude: -46.63,
-    checkInAccuracyMeters: 8,
-    checkInDistanceMeters: 12,
-    checkInStatus: 'on_site',
+    ...CHECKED_IN,
     checkedOutAt: '2026-11-06T12:10:00.000Z',
     outcome: 'customer_closed',
     outcomeJustification: 'Estabelecimento fechado',

@@ -16,6 +16,7 @@ export function createRouteRepository(api: Pick<ApiClient, 'request'>): RouteRep
         const response = await api.request('/v1/routes/today', { timeoutMs: ROUTE_TIMEOUT_MS })
         return routeDetailSchema.parse(response)
       } catch (error) {
+        // Código de erro da própria API (apps/api, GET /v1/routes/today), por isso em português.
         if (
           error instanceof ApiRequestError &&
           error.status === 404 &&
