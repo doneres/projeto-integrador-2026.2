@@ -52,6 +52,13 @@ No Expo Go, `localhost` aponta para o próprio celular. Use o **IP da sua máqui
 - O login espera até **90 s** pela resposta inteira (a API no Render Free dorme) e, passados 4 s sem resposta, mostra "Acordando o servidor…".
 - **Trocar a URL da API:** toque longo no logo AXIS da tela de login. A URL fica guardada no aparelho; "Usar a do app" volta para `EXPO_PUBLIC_API_URL`. Endereço `http://` mostra um aviso (a senha viaja sem criptografia): serve só para a rede local de desenvolvimento. Sem URL guardada nem de ambiente, o login manda o Vendedor para esse toque longo.
 
+## Rota do dia
+
+- A tela inicial lê `GET /v1/routes/today` por `RouteRepository` (`src/repositories/route-repository.ts`); nenhuma tela chama `fetch`. Trocar a implementação online por SQLite e fila (#27) não muda as telas.
+- Dia sem rota (404 `SEM_ROTA_HOJE`) vira `null` no repositório e o estado vazio na tela; qualquer outro erro vira o aviso com "Tentar de novo". A leitura espera até 90 s (API no Render Free dorme).
+- Cada Visita mostra o Cliente, o endereço e o estado (Pendente, Em andamento, Concluída, Não realizada) em texto e ícone, num bloco só para o leitor de tela. Por enquanto o item só mostra: o toque para abrir a Visita entra com o check-in.
+- Nos testes, `createFakeAppData(auth, routes)` aceita um repositório de rota falso e `test/route-fixtures.ts` monta rotas nos quatro estados.
+
 ## Scripts
 
 Dentro de `apps/mobile` (ou na raiz, com `pnpm --filter @axis/mobile <script>`):
@@ -72,7 +79,7 @@ app/            rotas do Expo Router (arquivos finos que só exportam uma tela)
 src/
   screens/      composição das telas, sem regra de negócio
   components/   componentes base (NativeWind), sem acesso a dados
-  hooks/        ligam o React a repositories e services (sessão, login, URL da API)
+  hooks/        ligam o React a repositories e services (sessão, login, URL da API, rota do dia)
   repositories/ acesso a dados (API; depois SQLite com outbox)
   services/     regras e integrações (ambiente, cliente HTTP, GPS, câmera)
   theme/        tokens de cor e verificação de contraste
