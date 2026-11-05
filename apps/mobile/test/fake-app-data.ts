@@ -1,6 +1,7 @@
 import type { Session } from '@axis/contracts'
 import { type AppData, createAppData, createUnauthorizedBus } from '@/repositories/app-data'
 import type { AuthRepository } from '@/repositories/auth-repository'
+import type { RouteRepository } from '@/repositories/route-repository'
 import { createMemoryStore } from './memory-store'
 
 /** Sessão de Vendedor válida para os testes. */
@@ -25,8 +26,8 @@ export type FakeAppData = AppData & {
   emitUnauthorized(token?: string | null): void
 }
 
-/** Repositórios de verdade sobre armazenamento em memória; só o login é falso. */
-export function createFakeAppData(auth?: AuthRepository): FakeAppData {
+/** Repositórios de verdade sobre armazenamento em memória; só o login e a rota podem ser falsos. */
+export function createFakeAppData(auth?: AuthRepository, routes?: RouteRepository): FakeAppData {
   const real = createAppData({
     store: createMemoryStore(),
     fetch: (() => Promise.reject(new Error('rede indisponível nos testes'))) as typeof fetch,
@@ -36,6 +37,7 @@ export function createFakeAppData(auth?: AuthRepository): FakeAppData {
   return {
     ...real,
     auth: auth ?? real.auth,
+    routes: routes ?? real.routes,
     onUnauthorized: unauthorized.subscribe,
     emitUnauthorized: (token = sellerSession().token) => unauthorized.emit(token),
   }
