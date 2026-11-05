@@ -29,7 +29,7 @@ describe('createSessionRepository', () => {
   it('sessão vencida não é devolvida e é apagada', async () => {
     const store = createMemoryStore()
     await createSessionRepository(store, () => NOW).save(session)
-    const later = () => new Date('2026-11-02T20:00:00.000Z')
+    const later = () => new Date(session.expiresAt)
     await expect(createSessionRepository(store, later).load()).resolves.toBeNull()
     await expect(store.get('axis.session')).resolves.toBeNull()
   })

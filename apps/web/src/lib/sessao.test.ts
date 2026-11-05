@@ -1,4 +1,4 @@
-import type { Sessao } from '@axis/contracts'
+import type { Session } from '@axis/contracts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   assinarSessao,
@@ -9,15 +9,16 @@ import {
   sessaoValida,
 } from './sessao'
 
-const sessao: Sessao = {
+const sessao: Session = {
   token: 'token',
-  expiraEm: '2026-10-21T11:00:00Z',
-  usuario: {
+  expiresAt: '2026-10-21T11:00:00Z',
+  user: {
     id: '0192f4a0-0000-7000-8000-0000000000a1',
-    nome: 'Maria Souza',
+    name: 'Maria Souza',
     email: 'gestor@axis.example',
-    matricula: '1001',
-    perfil: 'coordenador',
+    registration: '1001',
+    role: 'coordinator',
+    coordinatorId: null,
   },
 }
 
@@ -50,7 +51,7 @@ describe('sessão', () => {
     expect(sessaoEncerradaPeloUsuario()).toBe(false)
   })
 
-  it('considera a sessão válida só até expiraEm', () => {
+  it('considera a sessão válida só até expiresAt', () => {
     expect(sessaoValida(sessao, Date.parse('2026-10-21T10:59:59Z'))).toBe(true)
     expect(sessaoValida(sessao, Date.parse('2026-10-21T11:00:00Z'))).toBe(false)
     expect(sessaoValida(null)).toBe(false)

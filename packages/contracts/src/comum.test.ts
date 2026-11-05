@@ -6,8 +6,6 @@ import {
   errosDeValidacao,
   idSchema,
   instanteSchema,
-  paginacaoSchema,
-  paginaDe,
   problemaSchema,
 } from './comum'
 
@@ -52,37 +50,6 @@ describe('centavosSchema', () => {
 
   it('recusa valor negativo', () => {
     expect(centavosSchema.safeParse(-1).success).toBe(false)
-  })
-})
-
-describe('paginacaoSchema', () => {
-  it('usa a página 1 com 20 itens por padrão', () => {
-    expect(paginacaoSchema.parse({})).toEqual({ pagina: 1, porPagina: 20 })
-  })
-
-  it('converte os valores que chegam como texto na query string', () => {
-    expect(paginacaoSchema.parse({ pagina: '3', porPagina: '50' })).toEqual({
-      pagina: 3,
-      porPagina: 50,
-    })
-  })
-
-  it('recusa mais de 100 itens por página', () => {
-    expect(paginacaoSchema.safeParse({ porPagina: '500' }).success).toBe(false)
-  })
-})
-
-describe('paginaDe', () => {
-  const paginaDeNomes = paginaDe(z.object({ nome: z.string() }))
-
-  it('aceita uma página com itens válidos', () => {
-    const pagina = { itens: [{ nome: 'A' }], total: 1, pagina: 1, porPagina: 20 }
-    expect(paginaDeNomes.safeParse(pagina).success).toBe(true)
-  })
-
-  it('valida cada item com o schema informado', () => {
-    const pagina = { itens: [{ nome: 1 }], total: 1, pagina: 1, porPagina: 20 }
-    expect(paginaDeNomes.safeParse(pagina).success).toBe(false)
   })
 })
 

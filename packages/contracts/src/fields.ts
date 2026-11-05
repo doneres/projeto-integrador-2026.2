@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
-// Campos reaproveitados pelos schemas novos (em inglês) e pelos antigos (em português), para que
-// remover os antigos não force mexer nos novos.
+// Campos reaproveitados pelos schemas do contrato (cliente, visita).
 
 /** Texto obrigatório e sem espaços nas pontas. Mensagens em português: aparecem na interface. */
 export function requiredText(field: string, max: number) {
@@ -28,7 +27,3 @@ export const longitudeSchema = z
   .number()
   .min(-180, 'A longitude vai de -180 a 180')
   .max(180, 'A longitude vai de -180 a 180')
-
-/** Coordenadas em graus decimais (WGS 84), usadas na validação do check-in (RN01). */
-export const coordenadasSchema = z.object({ latitude: latitudeSchema, longitude: longitudeSchema })
-export type Coordenadas = z.infer<typeof coordenadasSchema>

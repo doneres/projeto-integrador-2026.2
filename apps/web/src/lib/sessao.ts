@@ -1,4 +1,4 @@
-import { type Sessao, sessaoSchema } from '@axis/contracts'
+import { type Session, sessionSchema } from '@axis/contracts'
 import { useSyncExternalStore } from 'react'
 
 const CHAVE = 'axis.sessao'
@@ -14,13 +14,15 @@ function armazenamento(): Storage | null {
   }
 }
 
-function lerDoArmazenamento(): Sessao | null {
+function lerDoArmazenamento(): Session | null {
   try {
     const bruto = armazenamento()?.getItem(CHAVE)
     if (!bruto) {
       return null
     }
-    const resultado = sessaoSchema.safeParse(JSON.parse(bruto))
+    // Uma sessão gravada no formato antigo (contrato em português) não passa no schema e vira
+    // "sem sessão": o usuário só precisa entrar de novo.
+    const resultado = sessionSchema.safeParse(JSON.parse(bruto))
     return resultado.success ? resultado.data : null
   } catch {
     return null
@@ -40,7 +42,7 @@ function gravar(valor: string | null): void {
   }
 }
 
-let atual: Sessao | null = lerDoArmazenamento()
+let atual: Session | null = lerDoArmazenamento()
 let encerradaPeloUsuario = false
 
 function notificar(): void {
@@ -49,16 +51,16 @@ function notificar(): void {
   }
 }
 
-export function obterSessao(): Sessao | null {
+export function obterSessao(): Session | null {
   return atual
 }
 
-/** A sessão vale até o instante `expiraEm` definido pela API no login. */
-export function sessaoValida(sessao: Sessao | null, agora = Date.now()): sessao is Sessao {
-  return sessao !== null && Date.parse(sessao.expiraEm) > agora
+/** A sessão vale até o instante `expiresAt` definido pela API no login. */
+export function sessaoValida(sessao: Session | null, agora = Date.now()): sessao is Session {
+  return sessao !== null && Date.parse(sessao.expiresAt) > agora
 }
 
-export function iniciarSessao(sessao: Sessao): void {
+export function iniciarSessao(sessao: Session): void {
   atual = sessao
   encerradaPeloUsuario = false
   gravar(JSON.stringify(sessao))
@@ -91,6 +93,6 @@ export function assinarSessao(ouvinte: Ouvinte): () => void {
 }
 
 /** Sessão atual, atualizada em todos os componentes quando alguém entra ou sai. */
-export function useSessao(): Sessao | null {
+export function useSessao(): Session | null {
   return useSyncExternalStore(assinarSessao, obterSessao, () => null)
 }

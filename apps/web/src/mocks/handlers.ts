@@ -1,16 +1,16 @@
 import {
-  alteracaoStatusClienteSchema,
-  type Cliente,
-  dadosClienteSchema,
+  type Customer,
+  type CustomerFilters,
+  customerFiltersSchema,
+  customerInputSchema,
+  customerStatusChangeSchema,
   type ErroDeCampo,
   errosDeValidacao,
-  type FiltrosClientes,
-  filtrosClientesSchema,
-  loginSchema,
+  loginBodySchema,
   normalizarDocumento,
-  type Pagina,
-  type Sessao,
-  type Usuario,
+  type Page,
+  type Session,
+  type User,
 } from '@axis/contracts'
 import { delay, HttpResponse, http } from 'msw'
 import { clientesMock, SENHA_DEMO, usuariosMock } from './data'
@@ -19,7 +19,7 @@ const DURACAO_DA_SESSAO_MS = 8 * 60 * 60 * 1000
 const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
 
 // "Banco" em memória: volta aos dados de exemplo quando a página recarrega.
-let clientes: Cliente[] = structuredClone(clientesMock)
+let clientes: Customer[] = structuredClone(clientesMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 
@@ -35,7 +35,7 @@ function problema(
   )
 }
 
-function usuarioDaRequisicao(request: Request): Usuario | undefined {
+function usuarioDaRequisicao(request: Request): User | undefined {
   const cabecalho = request.headers.get('Authorization') ?? ''
   if (!cabecalho.startsWith(PREFIXO_DO_TOKEN)) {
     return undefined
@@ -48,36 +48,54 @@ const naoAutenticado = () =>
   problema(401, 'NAO_AUTENTICADO', 'Não autenticado', { detail: 'Entre novamente para continuar.' })
 const naoEncontrado = () =>
   problema(404, 'NAO_ENCONTRADO', 'Não encontrado', { detail: 'Cliente não encontrado.' })
+const semPermissao = () =>
+  problema(403, 'SEM_PERMISSAO', 'Sem permissão', {
+    detail: 'Seu perfil não tem acesso a este recurso.',
+  })
+// Como a API real: o 409 traz só `codigo` e `detail`, sem a lista `erros` (que é do 422).
 const documentoRepetido = () =>
   problema(409, 'DOCUMENTO_JA_CADASTRADO', 'Documento já cadastrado', {
     detail: 'Já existe um cliente com este CPF/CNPJ.',
-    erros: [{ campo: 'documento', mensagem: 'Já existe um cliente com este CPF/CNPJ.' }],
   })
 
-function filtrar(lista: Cliente[], filtros: FiltrosClientes): Cliente[] {
-  const termo = filtros.busca?.toLowerCase()
-  const termoDocumento = filtros.busca ? normalizarDocumento(filtros.busca) : ''
-  const bairro = filtros.bairro?.toLowerCase()
+/** Como a API real (#58): o Coordenador vê só os clientes da sua Equipe. */
+function daEquipe(usuario: User): Customer[] {
+  return usuario.role === 'director'
+    ? clientes
+    : clientes.filter((c) => c.coordinatorId === usuario.id)
+}
+
+/** Mesma busca, filtros e ordenação de GET /v1/customers. O bairro, como na API, é exato. */
+function filtrar(lista: Customer[], filtros: CustomerFilters): Customer[] {
+  const termo = filtros.search?.toLowerCase()
+  const termoDocumento = filtros.search ? normalizarDocumento(filtros.search) : ''
+  const direcao = filtros.order === 'desc' ? -1 : 1
   return lista
     .filter(
       (c) =>
         (!termo ||
-          c.nomeFantasia.toLowerCase().includes(termo) ||
-          c.razaoSocial.toLowerCase().includes(termo) ||
-          (termoDocumento !== '' && c.documento.includes(termoDocumento))) &&
+          c.tradeName.toLowerCase().includes(termo) ||
+          c.legalName.toLowerCase().includes(termo) ||
+          (termoDocumento !== '' && c.document.includes(termoDocumento))) &&
         (!filtros.status || c.status === filtros.status) &&
-        (!filtros.tipo || c.tipo === filtros.tipo) &&
-        (!bairro || c.endereco.bairro.toLowerCase().includes(bairro)),
+        (!filtros.origin || c.origin === filtros.origin) &&
+        (!filtros.district || c.district === filtros.district),
     )
-    .sort((a, b) => a.nomeFantasia.localeCompare(b.nomeFantasia, 'pt-BR'))
+    .sort(
+      (a, b) =>
+        direcao * String(a[filtros.sortBy]).localeCompare(String(b[filtros.sortBy]), 'pt-BR') ||
+        a.id.localeCompare(b.id),
+    )
 }
 
 async function lerDadosCliente(request: Request) {
-  return dadosClienteSchema.safeParse(await request.json().catch(() => undefined))
+  return customerInputSchema.safeParse(await request.json().catch(() => undefined))
 }
 
 function documentoEmUso(documento: string, idIgnorado?: string): boolean {
-  return clientes.some((c) => c.documento === documento && c.id !== idIgnorado)
+  return clientes.some(
+    (c) => c.document === documento && c.status !== 'rejected' && c.id !== idIgnorado,
+  )
 }
 
 function validacao(erros: ErroDeCampo[]) {
@@ -88,88 +106,106 @@ function validacao(erros: ErroDeCampo[]) {
 export const handlers = [
   http.post('/v1/auth/login', async ({ request }) => {
     await delay(400)
-    const corpo = loginSchema.safeParse(await request.json().catch(() => undefined))
+    const corpo = loginBodySchema.safeParse(await request.json().catch(() => undefined))
     if (!corpo.success) {
       return validacao(errosDeValidacao(corpo.error))
     }
-    const { identificador, senha } = corpo.data
+    const { identifier, password } = corpo.data
     const usuario = usuariosMock.find(
-      (u) => u.email.toLowerCase() === identificador.toLowerCase() || u.matricula === identificador,
+      (u) => u.email.toLowerCase() === identifier.toLowerCase() || u.registration === identifier,
     )
-    if (!usuario || senha !== SENHA_DEMO) {
+    if (!usuario || password !== SENHA_DEMO) {
       return problema(401, 'CREDENCIAIS_INVALIDAS', 'Credenciais inválidas', {
         detail: 'E-mail/matrícula ou senha incorretos.',
       })
     }
-    const expiraEm = new Date(Date.now() + DURACAO_DA_SESSAO_MS)
+    const expiresAt = new Date(Date.now() + DURACAO_DA_SESSAO_MS)
       .toISOString()
       .replace(/\.\d+Z$/, 'Z')
-    const sessao: Sessao = { token: `token-simulado-${usuario.id}`, expiraEm, usuario }
+    const sessao: Session = { token: `token-simulado-${usuario.id}`, expiresAt, user: usuario }
     return HttpResponse.json(sessao)
   }),
 
-  http.get('/v1/clientes', async ({ request }) => {
+  http.get('/v1/customers', async ({ request }) => {
     await delay(300)
-    if (!usuarioDaRequisicao(request)) {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
       return naoAutenticado()
     }
-    const consulta = filtrosClientesSchema.safeParse(
+    const consulta = customerFiltersSchema.safeParse(
       Object.fromEntries(new URL(request.url).searchParams),
     )
     if (!consulta.success) {
       return validacao(errosDeValidacao(consulta.error))
     }
-    const encontrados = filtrar(clientes, consulta.data)
-    const { pagina, porPagina } = consulta.data
-    const inicio = (pagina - 1) * porPagina
-    const corpo: Pagina<Cliente> = {
-      itens: encontrados.slice(inicio, inicio + porPagina),
+    const encontrados = filtrar(daEquipe(usuario), consulta.data)
+    const { page, perPage } = consulta.data
+    const inicio = (page - 1) * perPage
+    const corpo: Page<Customer> = {
+      items: encontrados.slice(inicio, inicio + perPage),
       total: encontrados.length,
-      pagina,
-      porPagina,
+      page,
+      perPage,
     }
     return HttpResponse.json(corpo)
   }),
 
-  http.get('/v1/clientes/:id', async ({ request, params }) => {
+  http.get('/v1/customers/:id', async ({ request, params }) => {
     await delay(200)
-    if (!usuarioDaRequisicao(request)) {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
       return naoAutenticado()
     }
-    const cliente = clientes.find((c) => c.id === String(params.id))
+    const cliente = daEquipe(usuario).find((c) => c.id === String(params.id))
     return cliente ? HttpResponse.json(cliente) : naoEncontrado()
   }),
 
-  http.post('/v1/clientes', async ({ request }) => {
+  http.post('/v1/customers', async ({ request }) => {
     await delay(400)
-    if (!usuarioDaRequisicao(request)) {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
       return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
     }
     const dados = await lerDadosCliente(request)
     if (!dados.success) {
       return validacao(errosDeValidacao(dados.error))
     }
-    if (documentoEmUso(dados.data.documento)) {
+    if (documentoEmUso(dados.data.document)) {
       return documentoRepetido()
     }
     const instante = agora()
-    const novo: Cliente = {
+    // Cliente cadastrado pelo painel nasce de carteira, ativo e da Equipe de quem cadastrou.
+    const novo: Customer = {
       ...dados.data,
+      complement: dados.data.complement || null,
       id: crypto.randomUUID(),
-      status: 'ativo',
-      criadoEm: instante,
-      atualizadoEm: instante,
+      origin: 'portfolio',
+      status: 'active',
+      coordinatorId: usuario.id,
+      createdById: usuario.id,
+      approvedById: null,
+      approvedAt: null,
+      rejectionReason: null,
+      createdAt: instante,
+      updatedAt: instante,
     }
     clientes = [...clientes, novo]
     return HttpResponse.json(novo, { status: 201 })
   }),
 
-  http.put('/v1/clientes/:id', async ({ request, params }) => {
+  http.put('/v1/customers/:id', async ({ request, params }) => {
     await delay(400)
-    if (!usuarioDaRequisicao(request)) {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
       return naoAutenticado()
     }
-    const atual = clientes.find((c) => c.id === String(params.id))
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const atual = daEquipe(usuario).find((c) => c.id === String(params.id))
     if (!atual) {
       return naoEncontrado()
     }
@@ -177,30 +213,43 @@ export const handlers = [
     if (!dados.success) {
       return validacao(errosDeValidacao(dados.error))
     }
-    if (documentoEmUso(dados.data.documento, atual.id)) {
+    if (documentoEmUso(dados.data.document, atual.id)) {
       return documentoRepetido()
     }
-    const atualizado: Cliente = { ...atual, ...dados.data, atualizadoEm: agora() }
+    // A edição não muda origem, estado nem dono.
+    const atualizado: Customer = {
+      ...atual,
+      ...dados.data,
+      complement: dados.data.complement || null,
+      updatedAt: agora(),
+    }
     clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
     return HttpResponse.json(atualizado)
   }),
 
-  http.patch('/v1/clientes/:id/status', async ({ request, params }) => {
+  http.patch('/v1/customers/:id/status', async ({ request, params }) => {
     await delay(300)
-    if (!usuarioDaRequisicao(request)) {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
       return naoAutenticado()
     }
-    const atual = clientes.find((c) => c.id === String(params.id))
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const atual = daEquipe(usuario).find((c) => c.id === String(params.id))
     if (!atual) {
       return naoEncontrado()
     }
-    const corpo = alteracaoStatusClienteSchema.safeParse(
-      await request.json().catch(() => undefined),
-    )
+    const corpo = customerStatusChangeSchema.safeParse(await request.json().catch(() => undefined))
     if (!corpo.success) {
       return validacao(errosDeValidacao(corpo.error))
     }
-    const atualizado: Cliente = { ...atual, status: corpo.data.status, atualizadoEm: agora() }
+    if (atual.status !== 'active' && atual.status !== 'inactive') {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Transição inválida', {
+        detail: 'Só cliente ativo ou inativo pode ser inativado ou reativado.',
+      })
+    }
+    const atualizado: Customer = { ...atual, status: corpo.data.status, updatedAt: agora() }
     clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
     return HttpResponse.json(atualizado)
   }),

@@ -1,4 +1,9 @@
-import { type FiltrosClientes, filtrosClientesSchema, type StatusCliente } from '@axis/contracts'
+import {
+  type CustomerFilters,
+  type CustomerStatus,
+  type CustomerStatusChange,
+  customerFiltersSchema,
+} from '@axis/contracts'
 import { type FormEvent, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 import { Botao, classesDeBotao } from '../components/ui/Botao'
@@ -9,28 +14,37 @@ import { mensagemDeErro } from '../lib/erros'
 import { formatarDocumento } from '../lib/formatacao'
 
 const POR_PAGINA = 10
-const ROTULO_TIPO = { carteira: 'Carteira', prospeccao: 'Prospecção' } as const
-const ROTULO_STATUS = { ativo: 'Ativo', inativo: 'Inativo' } as const
+// A API usa os valores em inglês (ADR 0001); os rótulos em português são da interface.
+// "Tipo" na tela é a origem do cliente no contrato (`origin`).
+const ROTULO_TIPO = { portfolio: 'Carteira', prospect: 'Prospecção' } as const
+const ROTULO_STATUS: Record<CustomerStatus, string> = {
+  active: 'Ativo',
+  inactive: 'Inativo',
+  // Só prospecções passam por estes dois; aparecem na lista, mas são tratadas na tela de Prospecções.
+  pending_approval: 'Aguardando aprovação',
+  rejected: 'Rejeitado',
+}
 const OPCOES_STATUS = [
   ['', 'Todos'],
-  ['ativo', 'Ativos'],
-  ['inativo', 'Inativos'],
+  ['active', 'Ativos'],
+  ['inactive', 'Inativos'],
 ] as const
 const OPCOES_TIPO = [
   ['', 'Todos'],
-  ['carteira', 'Carteira'],
-  ['prospeccao', 'Prospecção'],
+  ['portfolio', 'Carteira'],
+  ['prospect', 'Prospecção'],
 ] as const
 
-type Confirmacao = { id: string; nome: string; novoStatus: StatusCliente }
+type Confirmacao = { id: string; nome: string; novoStatus: CustomerStatusChange['status'] }
 
 /** Os filtros ficam na URL: o link de uma busca abre a mesma lista. */
-function lerFiltros(parametros: URLSearchParams): FiltrosClientes {
-  const resultado = filtrosClientesSchema.safeParse({
+function lerFiltros(parametros: URLSearchParams): CustomerFilters {
+  const resultado = customerFiltersSchema.safeParse({
     ...Object.fromEntries(parametros),
-    porPagina: POR_PAGINA,
+    perPage: POR_PAGINA,
   })
-  return resultado.success ? resultado.data : { pagina: 1, porPagina: POR_PAGINA }
+  // Um link inválido (ex.: salvo antes da troca para o contrato em inglês) abre a lista sem filtros.
+  return resultado.success ? resultado.data : customerFiltersSchema.parse({ perPage: POR_PAGINA })
 }
 
 export function ClientesPage() {
@@ -40,7 +54,7 @@ export function ClientesPage() {
   const alterarStatus = useAlterarStatusCliente()
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null)
   const mensagem = (useLocation().state as { mensagem?: string } | null)?.mensagem
-  const temFiltros = Boolean(filtros.busca || filtros.status || filtros.tipo || filtros.bairro)
+  const temFiltros = Boolean(filtros.search || filtros.status || filtros.origin || filtros.district)
 
   function aplicar(mudancas: Record<string, string>) {
     const novos = new URLSearchParams(parametros)
@@ -51,7 +65,7 @@ export function ClientesPage() {
         novos.delete(chave)
       }
     }
-    novos.delete('pagina')
+    novos.delete('page')
     setParametros(novos)
   }
 
@@ -59,14 +73,14 @@ export function ClientesPage() {
     evento.preventDefault()
     const dados = new FormData(evento.currentTarget)
     aplicar({
-      busca: String(dados.get('busca') ?? '').trim(),
-      bairro: String(dados.get('bairro') ?? '').trim(),
+      search: String(dados.get('search') ?? '').trim(),
+      district: String(dados.get('district') ?? '').trim(),
     })
   }
 
   function irParaPagina(pagina: number) {
     const novos = new URLSearchParams(parametros)
-    novos.set('pagina', String(pagina))
+    novos.set('page', String(pagina))
     setParametros(novos)
   }
 
@@ -81,8 +95,8 @@ export function ClientesPage() {
   }
 
   const pagina = clientes.data
-  const primeiro = pagina ? (pagina.pagina - 1) * pagina.porPagina + 1 : 0
-  const ultimo = pagina ? primeiro + pagina.itens.length - 1 : 0
+  const primeiro = pagina ? (pagina.page - 1) * pagina.perPage + 1 : 0
+  const ultimo = pagina ? primeiro + pagina.items.length - 1 : 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -102,10 +116,10 @@ export function ClientesPage() {
         className="flex flex-wrap items-end gap-3"
       >
         <Campo
-          name="busca"
+          name="search"
           rotulo="Buscar"
           placeholder="Nome, razão social ou CNPJ/CPF"
-          defaultValue={filtros.busca ?? ''}
+          defaultValue={filtros.search ?? ''}
           className="min-w-64 flex-1"
         />
         <CampoSelecao
@@ -117,14 +131,14 @@ export function ClientesPage() {
         <CampoSelecao
           rotulo="Tipo"
           opcoes={OPCOES_TIPO}
-          value={filtros.tipo ?? ''}
-          onChange={(evento) => aplicar({ tipo: evento.target.value })}
+          value={filtros.origin ?? ''}
+          onChange={(evento) => aplicar({ origin: evento.target.value })}
         />
         <Campo
-          name="bairro"
+          name="district"
           rotulo="Bairro"
           placeholder="Todos"
-          defaultValue={filtros.bairro ?? ''}
+          defaultValue={filtros.district ?? ''}
           className="w-44"
         />
         <Botao type="submit" variante="secundario">
@@ -149,7 +163,7 @@ export function ClientesPage() {
         </div>
       )}
 
-      {pagina && pagina.itens.length === 0 && (
+      {pagina && pagina.items.length === 0 && (
         <div className="rounded-md border border-border px-4 py-6 text-sm">
           {temFiltros ? (
             <p>
@@ -168,7 +182,7 @@ export function ClientesPage() {
         </div>
       )}
 
-      {pagina && pagina.itens.length > 0 && (
+      {pagina && pagina.items.length > 0 && (
         <>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full min-w-[760px] text-left text-sm">
@@ -195,40 +209,43 @@ export function ClientesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {pagina.itens.map((cliente) => (
+                {pagina.items.map((cliente) => (
                   <tr key={cliente.id}>
                     <td className="px-4 py-3">
-                      <p className="font-medium">{cliente.nomeFantasia}</p>
-                      <p className="text-text-muted">{cliente.razaoSocial}</p>
+                      <p className="font-medium">{cliente.tradeName}</p>
+                      <p className="text-text-muted">{cliente.legalName}</p>
                     </td>
                     <td className="px-4 py-3 tabular-nums">
-                      {formatarDocumento(cliente.documento)}
+                      {formatarDocumento(cliente.document)}
                     </td>
                     <td className="px-4 py-3">
-                      {cliente.endereco.bairro} · {cliente.endereco.cidade}/{cliente.endereco.uf}
+                      {cliente.district} · {cliente.city}/{cliente.state}
                     </td>
                     <td className="px-4 py-3">
-                      {ROTULO_TIPO[cliente.tipo]} · {ROTULO_STATUS[cliente.status]}
+                      {ROTULO_TIPO[cliente.origin]} · {ROTULO_STATUS[cliente.status]}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-3">
                         <Link to={`/clientes/${cliente.id}/editar`} className="underline">
-                          Editar<span className="sr-only"> {cliente.nomeFantasia}</span>
+                          Editar<span className="sr-only"> {cliente.tradeName}</span>
                         </Link>
-                        <button
-                          type="button"
-                          className="underline"
-                          onClick={() =>
-                            setConfirmacao({
-                              id: cliente.id,
-                              nome: cliente.nomeFantasia,
-                              novoStatus: cliente.status === 'ativo' ? 'inativo' : 'ativo',
-                            })
-                          }
-                        >
-                          {cliente.status === 'ativo' ? 'Inativar' : 'Reativar'}
-                          <span className="sr-only"> {cliente.nomeFantasia}</span>
-                        </button>
+                        {/* Só cliente ativo ou inativo muda por aqui; a API recusa os demais (409). */}
+                        {(cliente.status === 'active' || cliente.status === 'inactive') && (
+                          <button
+                            type="button"
+                            className="underline"
+                            onClick={() =>
+                              setConfirmacao({
+                                id: cliente.id,
+                                nome: cliente.tradeName,
+                                novoStatus: cliente.status === 'active' ? 'inactive' : 'active',
+                              })
+                            }
+                          >
+                            {cliente.status === 'active' ? 'Inativar' : 'Reativar'}
+                            <span className="sr-only"> {cliente.tradeName}</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -243,7 +260,7 @@ export function ClientesPage() {
               className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted px-4 py-3 text-sm"
             >
               <p>
-                {confirmacao.novoStatus === 'inativo'
+                {confirmacao.novoStatus === 'inactive'
                   ? `Inativar ${confirmacao.nome}? Você pode reativá-lo depois.`
                   : `Reativar ${confirmacao.nome}?`}
               </p>
@@ -267,15 +284,15 @@ export function ClientesPage() {
             </span>
             <Botao
               variante="secundario"
-              disabled={pagina.pagina <= 1}
-              onClick={() => irParaPagina(pagina.pagina - 1)}
+              disabled={pagina.page <= 1}
+              onClick={() => irParaPagina(pagina.page - 1)}
             >
               Anterior
             </Botao>
             <Botao
               variante="secundario"
               disabled={ultimo >= pagina.total}
-              onClick={() => irParaPagina(pagina.pagina + 1)}
+              onClick={() => irParaPagina(pagina.page + 1)}
             >
               Próxima
             </Botao>

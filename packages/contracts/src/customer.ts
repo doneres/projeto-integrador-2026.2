@@ -11,8 +11,7 @@ import {
 } from './fields'
 import { paginationSchema } from './pagination'
 
-// Cliente conforme o modelo de dados (#26) e o ADR 0001. Convive com ./clientes (em português)
-// até a remoção dos schemas antigos.
+// Cliente conforme o modelo de dados (#26) e o ADR 0001.
 
 /** `portfolio`: cadastrado pelo Coordenador. `prospect`: cadastrado em campo pelo Vendedor. Imutável. */
 export const customerOriginSchema = z.enum(['portfolio', 'prospect'])

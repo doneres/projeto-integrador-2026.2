@@ -15,7 +15,7 @@ Declare a dependência no `package.json` da frente:
 E importe os schemas e tipos:
 
 ```ts
-import { clienteSchema, paginaDe, type Cliente } from '@axis/contracts'
+import { customerSchema, pageOf, type Customer } from '@axis/contracts'
 ```
 
 - **API:** valida a entrada e a saída das rotas com estes schemas (`fastify-type-provider-zod`) e gera o OpenAPI a partir deles.
@@ -31,7 +31,7 @@ O pacote é consumido direto do código-fonte TypeScript, sem etapa de build.
 | Instantes | ISO 8601 em UTC, terminado em `Z` | `instanteSchema` |
 | Datas de calendário | `AAAA-MM-DD`, no fuso America/Sao_Paulo | `dataCalendarioSchema` |
 | Dinheiro | Inteiro em centavos | `centavosSchema` |
-| Paginação | `?pagina=1&porPagina=20` (máx. 100) → `{ itens, total, pagina, porPagina }` | `paginacaoSchema`, `paginaDe` |
+| Paginação | `?page=1&perPage=20` (máx. 100) → `{ items, total, page, perPage }` | `paginationSchema`, `pageOf` |
 | Erros | Problem Details (RFC 9457) com `codigo` e `erros` | `problemaSchema`, `errosDeValidacao` |
 | CPF/CNPJ | Sem máscara, com dígitos verificadores conferidos; o CNPJ aceita o formato alfanumérico emitido desde julho de 2026 | `documentoSchema`, `normalizarDocumento` |
 | CEP e telefone | Só dígitos; a máscara é da interface | `cepSchema`, `telefoneSchema`, `apenasDigitos` |
@@ -58,7 +58,7 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | POST | `/v1/visits/{id}/check-in` | `checkInBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
 | POST | `/v1/visits/{id}/check-out` | `checkOutBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
 
-Os caminhos desta tabela são a proposta do contrato; cada ticket de API os confirma ao implementar. O painel web ainda chama as rotas antigas em português (`/v1/clientes`, corpo `identificador`/`senha`) e migra na etapa de remoção.
+Os caminhos desta tabela são a proposta do contrato; cada ticket de API os confirma ao implementar.
 
 ## Códigos de erro
 
@@ -76,21 +76,21 @@ Os caminhos desta tabela são a proposta do contrato; cada ticket de API os conf
 | `TRANSICAO_INVALIDA` | 409 | Mudança de estado que o cliente não admite (ex.: inativar prospecção pendente) |
 | `SEM_ROTA_HOJE` | 404 | O Vendedor não tem rota montada para o dia |
 
-## Schemas novos (em inglês) e antigos (em português)
+## Nomes em inglês
 
-O contrato está numa migração expand–contract (ADR 0001): os schemas **novos**, em inglês e conforme o [modelo de dados](../../docs/05-modelo-dados/README.md), existem ao lado dos **antigos**, em português. Os antigos continuam exportados porque o painel web ainda os usa, e **serão removidos** quando o web migrar. Código novo (a API e o que vier) usa só os novos.
+O contrato usa só nomes em inglês (ADR 0001), conforme o [modelo de dados](../../docs/05-modelo-dados/README.md). A migração expand–contract terminou na #57: os schemas antigos em português (`auth.ts`, `clientes.ts`, `paginacaoSchema`, `paginaDe`) foram apagados depois que o painel web passou a usar os novos.
 
-| Assunto | Novos (inglês) | Antigos (português, a remover) |
-|---|---|---|
-| Usuário e login | `user.ts`: `roleSchema`, `userSchema`, `loginBodySchema`, `sessionSchema` | `auth.ts`: `perfilSchema`, `usuarioSchema`, `loginSchema`, `sessaoSchema` |
-| Cliente | `customer.ts`: `customerSchema`, `customerInputSchema`, `customerStatusChangeSchema`, `customerRejectionSchema`, `customerFiltersSchema` | `clientes.ts`: `clienteSchema`, `dadosClienteSchema`, `alteracaoStatusClienteSchema`, `filtrosClientesSchema` |
-| Rota | `route.ts`: `routeSchema`, `createRouteBodySchema` | não existia |
-| Visita | `visit.ts`: `visitSchema`, `checkInBodySchema`, `checkOutBodySchema`, `visitStatusOf` (estado derivado) | não existia |
-| Paginação | `pagination.ts`: `paginationSchema` (`?page&perPage`), `pageOf` (`{ items, total, page, perPage }`) | `comum.ts`: `paginacaoSchema`, `paginaDe` |
+| Assunto | Arquivo e schemas |
+|---|---|
+| Usuário e login | `user.ts`: `roleSchema`, `PANEL_ROLES`, `userSchema`, `loginBodySchema`, `sessionSchema` |
+| Cliente | `customer.ts`: `customerSchema`, `customerInputSchema`, `customerStatusChangeSchema`, `customerRejectionSchema`, `customerFiltersSchema` |
+| Rota | `route.ts`: `routeSchema`, `createRouteBodySchema`, `routeDetailSchema`, `routeFiltersSchema` |
+| Visita | `visit.ts`: `visitSchema`, `checkInBodySchema`, `checkOutBodySchema`, `visitStatusOf` (estado derivado) |
+| Paginação | `pagination.ts`: `paginationSchema` (`?page&perPage`), `pageOf` (`{ items, total, page, perPage }`) |
 
-Ficam como estão, por serem neutros ou convenções do #21: `idSchema`, `instanteSchema`, `dataCalendarioSchema`, `centavosSchema`, `documentoSchema`, `cepSchema`, `telefoneSchema`, `ufSchema`, `coordenadasSchema` (reaproveitadas pelos schemas novos) e o formato de erro `problemaSchema` (`codigo`, `erros`). O Problem Details segue com os campos em português porque o web já depende dele; renomeá-lo faz parte da etapa de remoção.
+Ainda com nome em português, por serem convenções do #21 usadas também pela API e pelo app: `idSchema`, `instanteSchema`, `dataCalendarioSchema`, `centavosSchema`, `documentoSchema`, `normalizarDocumento`, `apenasDigitos` e o formato de erro `problemaSchema` (`codigo`, `erros`). Renomear o Problem Details mexe na API, no web e no mobile ao mesmo tempo e fica para um ticket próprio.
 
-Regras que os schemas novos já aplicam: coordenadas obrigatórias no cliente; motivo obrigatório na prospecção rejeitada; justificativa obrigatória no check-in fora do raio e nos desfechos `customer_closed` e `not_performed`; check-out só depois do check-in e junto com o desfecho; o mesmo cliente não repete numa rota.
+Regras que os schemas já aplicam: coordenadas obrigatórias no cliente; motivo obrigatório na prospecção rejeitada; justificativa obrigatória no check-in fora do raio e nos desfechos `customer_closed` e `not_performed`; check-out só depois do check-in e junto com o desfecho; o mesmo cliente não repete numa rota.
 
 ## Testes
 

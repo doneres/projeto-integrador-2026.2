@@ -14,25 +14,7 @@ export const dataCalendarioSchema = z.iso.date()
 /** Dinheiro: inteiro em centavos (R$ 12,34 = 1234). */
 export const centavosSchema = z.number().int().min(0)
 
-export const POR_PAGINA_MAXIMO = 100
-
-/** Parâmetros de paginação das listagens: ?pagina=1&porPagina=20 */
-export const paginacaoSchema = z.object({
-  pagina: z.coerce.number().int().min(1).default(1),
-  porPagina: z.coerce.number().int().min(1).max(POR_PAGINA_MAXIMO).default(20),
-})
-export type Paginacao = z.infer<typeof paginacaoSchema>
-
-/** Envelope de uma página de resultados. */
-export function paginaDe<T extends z.ZodType>(item: T) {
-  return z.object({
-    itens: z.array(item),
-    total: z.number().int().min(0),
-    pagina: z.number().int().min(1),
-    porPagina: z.number().int().min(1).max(POR_PAGINA_MAXIMO),
-  })
-}
-export type Pagina<T> = { itens: T[]; total: number; pagina: number; porPagina: number }
+// A paginação fica em ./pagination (`paginationSchema`, `pageOf`).
 
 /** Erro de validação de um campo específico. */
 export const erroDeCampoSchema = z.object({

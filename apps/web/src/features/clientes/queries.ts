@@ -1,24 +1,24 @@
 import {
-  clienteSchema,
-  type DadosCliente,
-  type FiltrosClientes,
-  paginaDe,
-  type StatusCliente,
+  type CustomerFilters,
+  type CustomerInput,
+  type CustomerStatusChange,
+  customerSchema,
+  pageOf,
 } from '@axis/contracts'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 
-const paginaDeClientesSchema = paginaDe(clienteSchema)
+const paginaDeClientesSchema = pageOf(customerSchema)
 
 export const clientesKeys = {
   all: ['clientes'] as const,
   lists: () => [...clientesKeys.all, 'list'] as const,
-  list: (filtros: FiltrosClientes) => [...clientesKeys.lists(), filtros] as const,
+  list: (filtros: CustomerFilters) => [...clientesKeys.lists(), filtros] as const,
   detail: (id: string) => [...clientesKeys.all, 'detail', id] as const,
 }
 
 /** Query string da listagem, sem os filtros vazios. */
-export function paraQueryString(filtros: Partial<FiltrosClientes>): string {
+export function paraQueryString(filtros: Partial<CustomerFilters>): string {
   const parametros = new URLSearchParams()
   for (const [chave, valor] of Object.entries(filtros)) {
     if (valor !== undefined && valor !== '') {
@@ -28,10 +28,10 @@ export function paraQueryString(filtros: Partial<FiltrosClientes>): string {
   return parametros.toString()
 }
 
-export function useClientes(filtros: FiltrosClientes) {
+export function useClientes(filtros: CustomerFilters) {
   return useQuery({
     queryKey: clientesKeys.list(filtros),
-    queryFn: () => apiFetch(`/v1/clientes?${paraQueryString(filtros)}`, paginaDeClientesSchema),
+    queryFn: () => apiFetch(`/v1/customers?${paraQueryString(filtros)}`, paginaDeClientesSchema),
     placeholderData: keepPreviousData,
   })
 }
@@ -39,7 +39,7 @@ export function useClientes(filtros: FiltrosClientes) {
 export function useCliente(id: string | undefined) {
   return useQuery({
     queryKey: clientesKeys.detail(id ?? ''),
-    queryFn: () => apiFetch(`/v1/clientes/${encodeURIComponent(id ?? '')}`, clienteSchema),
+    queryFn: () => apiFetch(`/v1/customers/${encodeURIComponent(id ?? '')}`, customerSchema),
     enabled: Boolean(id),
   })
 }
@@ -48,8 +48,8 @@ export function useCliente(id: string | undefined) {
 export function useSalvarCliente(id?: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (dados: DadosCliente) =>
-      apiFetch(id ? `/v1/clientes/${encodeURIComponent(id)}` : '/v1/clientes', clienteSchema, {
+    mutationFn: (dados: CustomerInput) =>
+      apiFetch(id ? `/v1/customers/${encodeURIComponent(id)}` : '/v1/customers', customerSchema, {
         method: id ? 'PUT' : 'POST',
         body: JSON.stringify(dados),
       }),
@@ -64,8 +64,8 @@ export function useSalvarCliente(id?: string) {
 export function useAlterarStatusCliente() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: StatusCliente }) =>
-      apiFetch(`/v1/clientes/${encodeURIComponent(id)}/status`, clienteSchema, {
+    mutationFn: ({ id, status }: { id: string } & CustomerStatusChange) =>
+      apiFetch(`/v1/customers/${encodeURIComponent(id)}/status`, customerSchema, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),

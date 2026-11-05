@@ -8,7 +8,6 @@ import { buscarEnderecoPorCep } from '../features/clientes/cep'
 import {
   type DadosFormularioCliente,
   formularioClienteSchema,
-  paraDadosCliente,
   VALORES_INICIAIS,
   type ValoresFormularioCliente,
   valoresDoCliente,
@@ -16,6 +15,14 @@ import {
 import { useCliente, useSalvarCliente } from '../features/clientes/queries'
 import { ApiError } from '../lib/api'
 import { mensagemDeErro } from '../lib/erros'
+
+/** Campo do endereço devolvido pelo serviço de CEP → campo do formulário (nomes da API). */
+const CAMPOS_DO_CEP = {
+  logradouro: 'street',
+  bairro: 'district',
+  cidade: 'city',
+  uf: 'state',
+} as const
 
 const MENSAGEM_CEP = {
   'nao-encontrado': 'Não encontramos esse CEP. Confira os dígitos ou preencha o endereço à mão.',
@@ -54,23 +61,26 @@ export function ClienteFormPage() {
   async function preencherPeloCep() {
     setBuscandoCep(true)
     setAvisoCep(null)
-    const resultado = await buscarEnderecoPorCep(getValues('endereco.cep'))
+    const resultado = await buscarEnderecoPorCep(getValues('zipCode'))
     setBuscandoCep(false)
     if (resultado.situacao !== 'encontrado') {
       setAvisoCep(MENSAGEM_CEP[resultado.situacao])
       return
     }
-    for (const campo of ['logradouro', 'bairro', 'cidade', 'uf'] as const) {
-      const valor = resultado.endereco[campo]
+    for (const [doCep, doFormulario] of Object.entries(CAMPOS_DO_CEP)) {
+      const valor = resultado.endereco[doCep as keyof typeof CAMPOS_DO_CEP]
       if (valor) {
-        setValue(`endereco.${campo}`, valor, { shouldValidate: true, shouldDirty: true })
+        setValue(doFormulario, valor, { shouldValidate: true, shouldDirty: true })
       }
     }
     setAvisoCep('Endereço preenchido pelo CEP. Confira o número e o complemento.')
   }
 
   const enviar = handleSubmit((valores) => {
-    salvar.mutate(paraDadosCliente(valores, cliente.data?.tipo ?? 'carteira'), {
+    // O formulário não escolhe mais o "Tipo" (#57): pelo modelo de dados (#26), quem cadastra
+    // pelo painel é o Coordenador e o cliente nasce sempre de carteira (`portfolio`); prospecção
+    // só vem do app do Vendedor. A origem é definida pela API e não muda na edição.
+    salvar.mutate(valores, {
       onSuccess: () =>
         navegar('/clientes', {
           state: { mensagem: id ? 'Cliente atualizado.' : 'Cliente cadastrado.' },
@@ -106,34 +116,34 @@ export function ClienteFormPage() {
         <div className="grid gap-3 md:grid-cols-2">
           <Campo
             rotulo="Razão social"
-            erro={errors.razaoSocial?.message}
-            {...register('razaoSocial')}
+            erro={errors.legalName?.message}
+            {...register('legalName')}
           />
           <Campo
             rotulo="Nome fantasia"
-            erro={errors.nomeFantasia?.message}
-            {...register('nomeFantasia')}
+            erro={errors.tradeName?.message}
+            {...register('tradeName')}
           />
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <Campo
             rotulo="CNPJ ou CPF"
             dica="Com ou sem máscara. Aceita o CNPJ alfanumérico."
-            erro={errors.documento?.message}
-            {...register('documento')}
+            erro={errors.document?.message}
+            {...register('document')}
           />
           <Campo
             rotulo="Telefone"
             inputMode="tel"
             placeholder="(62) 99999-0000"
-            erro={errors.telefone?.message}
-            {...register('telefone')}
+            erro={errors.phone?.message}
+            {...register('phone')}
           />
           <Campo
             rotulo="Contato"
             placeholder="Pessoa de contato"
-            erro={errors.contato?.message}
-            {...register('contato')}
+            erro={errors.contactName?.message}
+            {...register('contactName')}
           />
         </div>
       </fieldset>
@@ -146,8 +156,8 @@ export function ClienteFormPage() {
             inputMode="numeric"
             placeholder="00000-000"
             className="w-44"
-            erro={errors.endereco?.cep?.message}
-            {...register('endereco.cep')}
+            erro={errors.zipCode?.message}
+            {...register('zipCode')}
           />
           <Botao variante="secundario" onClick={preencherPeloCep} disabled={buscandoCep}>
             {buscandoCep ? 'Buscando...' : 'Buscar CEP'}
@@ -160,39 +170,31 @@ export function ClienteFormPage() {
           <Campo
             rotulo="Logradouro"
             placeholder="Rua, avenida..."
-            erro={errors.endereco?.logradouro?.message}
-            {...register('endereco.logradouro')}
+            erro={errors.street?.message}
+            {...register('street')}
           />
           <Campo
             rotulo="Número"
             placeholder="Ex.: 100 ou S/N"
-            erro={errors.endereco?.numero?.message}
-            {...register('endereco.numero')}
+            erro={errors.number?.message}
+            {...register('number')}
           />
           <Campo
             rotulo="Complemento"
             placeholder="Opcional"
-            erro={errors.endereco?.complemento?.message}
-            {...register('endereco.complemento')}
+            erro={errors.complement?.message}
+            {...register('complement')}
           />
         </div>
         <div className="grid gap-3 md:grid-cols-[2fr_2fr_1fr]">
-          <Campo
-            rotulo="Bairro"
-            erro={errors.endereco?.bairro?.message}
-            {...register('endereco.bairro')}
-          />
-          <Campo
-            rotulo="Cidade"
-            erro={errors.endereco?.cidade?.message}
-            {...register('endereco.cidade')}
-          />
+          <Campo rotulo="Bairro" erro={errors.district?.message} {...register('district')} />
+          <Campo rotulo="Cidade" erro={errors.city?.message} {...register('city')} />
           <Campo
             rotulo="UF"
             maxLength={2}
             placeholder="GO"
-            erro={errors.endereco?.uf?.message}
-            {...register('endereco.uf')}
+            erro={errors.state?.message}
+            {...register('state')}
           />
         </div>
       </fieldset>
@@ -204,19 +206,20 @@ export function ClienteFormPage() {
             rotulo="Latitude"
             inputMode="decimal"
             placeholder="-16.6869"
-            erro={errors.localizacao?.latitude?.message}
-            {...register('localizacao.latitude')}
+            erro={errors.latitude?.message}
+            {...register('latitude')}
           />
           <Campo
             rotulo="Longitude"
             inputMode="decimal"
             placeholder="-49.2648"
-            erro={errors.localizacao?.longitude?.message}
-            {...register('localizacao.longitude')}
+            erro={errors.longitude?.message}
+            {...register('longitude')}
           />
         </div>
         <p className="text-xs text-text-muted">
-          Necessária para validar o check-in do vendedor no raio de 20 m (RN01).
+          Necessária para validar o check-in do vendedor no raio definido nos parâmetros do sistema
+          (padrão de 100 m, RN01).
         </p>
       </fieldset>
 
