@@ -224,4 +224,4 @@ Linha única: `checkinRadiusMeters` (padrão 100), `scoreWeightRevenue` (50), `s
 ## Pendências para outros tickets
 
 - **Sync offline (#27):** upload de `photo`; o que o servidor faz com pedido ou auditoria cujo check-in não chegou (rejeitar ou marcar inconsistente); ordem da fila por `seq` local (RN05).
-- **Contrato da API:** `packages/contracts` já tem os schemas em inglês deste modelo (`user`, `customer`, `route`, `visit`, paginação) ao lado dos antigos em português. Falta o web migrar para eles e a etapa de remoção dos antigos, inclusive o Problem Details (`codigo`, `erros`), que ainda tem campos em português.
+- **Contrato da API:** `packages/contracts` usa só os schemas em inglês deste modelo (`user`, `customer`, `route`, `visit`, paginação); o web migrou e os antigos foram apagados na #57. Falta renomear o Problem Details (`codigo`, `erros`), que ainda tem campos em português e é usado pela API, pelo web e pelo mobile.

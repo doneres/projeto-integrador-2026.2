@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
 // Paginação das listagens (convenção do #21) com os nomes em inglês do ADR 0001.
-// Convive com paginacaoSchema e paginaDe, de ./comum, até a remoção dos schemas em português.
 
 export const PER_PAGE_MAX = 100
 

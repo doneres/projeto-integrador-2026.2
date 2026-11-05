@@ -1,8 +1,7 @@
 import { z } from 'zod'
 import { idSchema, instanteSchema } from './comum'
 
-// Contrato em inglês de usuário e login (ADR 0001, modelo de dados #26). Convive com os schemas
-// em português de ./auth até a etapa de remoção da migração expand–contract (#54); os nomes novos não colidem com os antigos.
+// Contrato em inglês de usuário e login (ADR 0001, modelo de dados #26).
 
 export const roleSchema = z.enum(['seller', 'coordinator', 'director', 'administrator'])
 export type Role = z.infer<typeof roleSchema>

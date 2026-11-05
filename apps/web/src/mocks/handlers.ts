@@ -52,10 +52,10 @@ const semPermissao = () =>
   problema(403, 'SEM_PERMISSAO', 'Sem permissão', {
     detail: 'Seu perfil não tem acesso a este recurso.',
   })
+// Como a API real: o 409 traz só `codigo` e `detail`, sem a lista `erros` (que é do 422).
 const documentoRepetido = () =>
   problema(409, 'DOCUMENTO_JA_CADASTRADO', 'Documento já cadastrado', {
     detail: 'Já existe um cliente com este CPF/CNPJ.',
-    erros: [{ campo: 'document', mensagem: 'Já existe um cliente com este CPF/CNPJ.' }],
   })
 
 /** Como a API real (#58): o Coordenador vê só os clientes da sua Equipe. */

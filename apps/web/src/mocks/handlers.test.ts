@@ -99,7 +99,7 @@ describe('API simulada segue o contrato', () => {
     expect(inativado.corpo.status).toBe('inactive')
   })
 
-  it('recusa CPF/CNPJ repetido com Problem Details apontando o campo', async () => {
+  it('recusa CPF/CNPJ repetido com 409 DOCUMENTO_JA_CADASTRADO', async () => {
     const headers = await entrar('gestor@axis.example')
     const { status, corpo } = await chamar(problemaSchema, '/v1/customers', {
       method: 'POST',
@@ -107,7 +107,7 @@ describe('API simulada segue o contrato', () => {
       body: JSON.stringify({ ...novoCliente, document: clientesMock[0].document }),
     })
     expect(status).toBe(409)
-    expect(corpo.erros?.[0]?.campo).toBe('document')
+    expect(corpo.codigo).toBe('DOCUMENTO_JA_CADASTRADO')
   })
 
   it('só o Coordenador cadastra cliente', async () => {
