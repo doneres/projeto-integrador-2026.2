@@ -3,6 +3,7 @@ import { type ApiUrlSettings, createApiUrlSettings } from '@/services/api-url'
 import { getEnv } from '@/services/env'
 import { type KeyValueStore, secureStore } from '@/services/key-value-store'
 import { type AuthRepository, createAuthRepository } from './auth-repository'
+import { createRouteRepository, type RouteRepository } from './route-repository'
 import { createSessionRepository, type SessionRepository } from './session-repository'
 
 export type UnauthorizedListener = (token: string | null) => void
@@ -27,6 +28,7 @@ export function createUnauthorizedBus() {
 export type AppData = {
   api: ApiClient
   auth: AuthRepository
+  routes: RouteRepository
   sessions: SessionRepository
   apiUrl: ApiUrlSettings
   /**
@@ -55,6 +57,7 @@ export function createAppData({ store, fetch, envApiUrl }: Deps): AppData {
   return {
     api,
     auth: createAuthRepository(api),
+    routes: createRouteRepository(api),
     sessions,
     apiUrl,
     onUnauthorized: unauthorized.subscribe,
