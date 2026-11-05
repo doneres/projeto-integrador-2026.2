@@ -26,7 +26,7 @@ pnpm dev:web
 
 Abra o endereço mostrado no terminal (normalmente `http://localhost:5173`).
 
-Em desenvolvimento, `.env.development` liga a API simulada (`VITE_USE_MOCKS=true`), então o painel funciona sem o backend. Para apontar para a API real, crie `.env.local` a partir de `.env.example`.
+Em desenvolvimento, `.env.development` liga a API simulada (`VITE_USE_MOCKS=true`), então o painel funciona sem o backend. Para usar a API real local, suba a API (`pnpm db:up` e `pnpm dev:api`, veja [`apps/api`](../api/README.md)) e crie `.env.development.local` a partir de `.env.example` (`VITE_USE_MOCKS=false`, `VITE_API_URL` vazio). Tem que ser esse nome: no Vite, o `.env.development` vale mais que o `.env.local`, e com `.env.local` a API simulada continuaria ligada: o servidor do Vite repassa `/v1/...` para `http://localhost:3000`, sem CORS. As contas da API real vêm do seed (`coordenador@axis.dev`, senha `axis-dev-123`).
 
 A API simulada roda num service worker. O recarregamento forçado (Ctrl+Shift+R) e a opção "Bypass for network" do DevTools pulam o service worker: as chamadas `/v1/...` vão para o Vite e voltam 404. Recarregue com F5. O "banco" simulado fica na memória e volta aos dados de exemplo a cada recarga.
 
