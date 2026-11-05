@@ -7,6 +7,9 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { EmConstrucaoPage } from '../pages/EmConstrucaoPage'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { RotaDetalhePage } from '../pages/RotaDetalhePage'
+import { RotaNovaPage } from '../pages/RotaNovaPage'
+import { RotasPage } from '../pages/RotasPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -26,7 +29,9 @@ export const router = createBrowserRouter([
         element: <ClienteFormPage />,
         handle: { titulo: 'Editar cliente' },
       },
-      { path: 'rotas', element: <EmConstrucaoPage />, handle: { titulo: 'Rotas' } },
+      { path: 'rotas', element: <RotasPage />, handle: { titulo: 'Rotas' } },
+      { path: 'rotas/nova', element: <RotaNovaPage />, handle: { titulo: 'Nova rota' } },
+      { path: 'rotas/:id', element: <RotaDetalhePage />, handle: { titulo: 'Rota' } },
       { path: 'prospeccoes', element: <EmConstrucaoPage />, handle: { titulo: 'Prospecções' } },
       { path: 'metas', element: <EmConstrucaoPage />, handle: { titulo: 'Metas' } },
       { path: 'materiais', element: <EmConstrucaoPage />, handle: { titulo: 'Materiais de PDV' } },

@@ -1,8 +1,17 @@
-import { customerSchema, pageOf, problemaSchema, sessionSchema } from '@axis/contracts'
+import {
+  customerSchema,
+  pageOf,
+  problemaSchema,
+  routeDetailSchema,
+  routeSchema,
+  sessionSchema,
+  userSchema,
+} from '@axis/contracts'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { ZodType } from 'zod'
-import { clientesMock, SENHA_DEMO } from './data'
+import { hojeEmSaoPaulo } from '../lib/datas'
+import { clientesMock, rotasMock, SENHA_DEMO } from './data'
 import { handlers } from './handlers'
 
 // A API simulada só ajuda se responder como a real: cada resposta passa pelo schema do contrato.
@@ -118,5 +127,72 @@ describe('API simulada segue o contrato', () => {
       body: JSON.stringify(novoCliente),
     })
     expect(status).toBe(403)
+  })
+
+  it('lista os vendedores da Equipe (#79)', async () => {
+    const headers = await entrar('gestor@axis.example')
+    const { corpo } = await chamar(pageOf(userSchema), '/v1/users?role=seller', { headers })
+    expect(corpo.items.map((u) => u.role)).toEqual(['seller', 'seller'])
+  })
+
+  it('lista as rotas do dia e detalha com as Visitas na ordem', async () => {
+    const headers = await entrar('gestor@axis.example')
+    const lista = await chamar(pageOf(routeSchema), `/v1/routes?date=${hojeEmSaoPaulo()}`, {
+      headers,
+    })
+    expect(lista.corpo.total).toBe(2)
+    const { corpo } = await chamar(routeDetailSchema, `/v1/routes/${rotasMock[0].id}`, {
+      headers,
+    })
+    expect(corpo.visits.map((v) => v.position)).toEqual([1, 2, 3, 4])
+    expect(corpo.visits.map((v) => v.status)).toEqual([
+      'completed',
+      'in_progress',
+      'not_performed',
+      'pending',
+    ])
+  })
+
+  it('monta a rota com as Visitas Pendentes na ordem enviada e recusa repetir o dia', async () => {
+    const headers = await entrar('gestor@axis.example')
+    const vendedor = '0192f4a0-0000-7000-8000-0000000000a3'
+    const corpo = {
+      sellerId: vendedor,
+      date: '2099-01-02',
+      customerIds: [clientesMock[3].id, clientesMock[0].id],
+    }
+    const criada = await chamar(routeDetailSchema, '/v1/routes', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(corpo),
+    })
+    expect(criada.status).toBe(201)
+    expect(criada.corpo.visits.map((v) => [v.customerId, v.position, v.status])).toEqual([
+      [clientesMock[3].id, 1, 'pending'],
+      [clientesMock[0].id, 2, 'pending'],
+    ])
+
+    const repetida = await chamar(problemaSchema, '/v1/routes', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(corpo),
+    })
+    expect(repetida.corpo.codigo).toBe('ROTA_JA_EXISTE')
+  })
+
+  it('não põe cliente inativo na rota', async () => {
+    const headers = await entrar('gestor@axis.example')
+    const inativo = clientesMock.find((c) => c.status === 'inactive')
+    const { status, corpo } = await chamar(problemaSchema, '/v1/routes', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        sellerId: '0192f4a0-0000-7000-8000-0000000000a2',
+        date: '2099-01-03',
+        customerIds: [inativo?.id],
+      }),
+    })
+    expect(status).toBe(422)
+    expect(corpo.erros?.[0]?.campo).toBe('customerIds')
   })
 })
