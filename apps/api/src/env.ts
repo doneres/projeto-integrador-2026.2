@@ -5,7 +5,7 @@ const postgresUrl = z.url({ protocol: /^postgres(ql)?$/, message: 'deve ser uma 
 /** Prefixo do JWT_SECRET do .env.example: serve em dev, mas em produção deixaria os tokens forjáveis. */
 const DEV_SECRET_PREFIX = 'desenvolvimento-local'
 
-const envSchema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: postgresUrl,
@@ -34,13 +34,7 @@ export class EnvError extends Error {
 
 /** Valida o ambiente e recusa iniciar se faltar variável ou se alguma estiver inválida. */
 export function loadEnv(source: Record<string, string | undefined>): Env {
-  const parsed = envSchema.safeParse(source)
-  if (!parsed.success) {
-    throw new EnvError(
-      parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${messageFor(issue, source)}`),
-    )
-  }
-  const env = parsed.data
+  const env = parseEnv(envSchema, source)
   if (env.NODE_ENV === 'production' && env.JWT_SECRET.startsWith(DEV_SECRET_PREFIX)) {
     throw new EnvError(['JWT_SECRET: é o segredo de desenvolvimento do .env.example; gere um novo'])
   }
@@ -51,6 +45,20 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
     databaseUrlUnpooled: env.DATABASE_URL_UNPOOLED,
     jwtSecret: env.JWT_SECRET,
   }
+}
+
+/** Valida com o schema dado; em erro, lança um `EnvError` que lista cada variável. */
+export function parseEnv<Schema extends z.ZodType>(
+  schema: Schema,
+  source: Record<string, string | undefined>,
+): z.output<Schema> {
+  const parsed = schema.safeParse(source)
+  if (!parsed.success) {
+    throw new EnvError(
+      parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${messageFor(issue, source)}`),
+    )
+  }
+  return parsed.data
 }
 
 function messageFor(issue: z.core.$ZodIssue, source: Record<string, string | undefined>): string {

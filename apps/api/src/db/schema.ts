@@ -66,6 +66,34 @@ export const users = pgTable(
   ],
 )
 
+/** Parâmetros do sistema: linha única, criada pelo seed. Só o Administrador altera. */
+export const systemSettings = pgTable(
+  'system_settings',
+  {
+    /** Sempre 1: a chave primária é o que garante a linha única. */
+    id: integer().primaryKey().default(1),
+    checkinRadiusMeters: integer().notNull(),
+    scoreWeightRevenue: integer().notNull(),
+    scoreWeightVisits: integer().notNull(),
+    scoreWeightNewCustomers: integer().notNull(),
+    /** Nulo enquanto valerem os padrões do seed. */
+    updatedById: uuid().references(() => users.id),
+    ...timestamps,
+  },
+  (table) => [
+    check('system_settings_single_row', sql`${table.id} = 1`),
+    check('system_settings_radius_positive', sql`${table.checkinRadiusMeters} > 0`),
+    check(
+      'system_settings_weights_not_negative',
+      sql`${table.scoreWeightRevenue} >= 0 AND ${table.scoreWeightVisits} >= 0 AND ${table.scoreWeightNewCustomers} >= 0`,
+    ),
+    check(
+      'system_settings_weights_sum_100',
+      sql`${table.scoreWeightRevenue} + ${table.scoreWeightVisits} + ${table.scoreWeightNewCustomers} = 100`,
+    ),
+  ],
+)
+
 /**
  * Estabelecimento atendido por uma Equipe. Nunca é excluído, só inativado. A prospecção
  * (`origin = 'prospect'`) usa a mesma tabela; o fluxo de aprovação vem em outro ticket.
