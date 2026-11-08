@@ -22,7 +22,7 @@ pnpm dev:api                                  # aplica as migrations e escuta em
 ```
 
 - Saúde: `GET http://localhost:3000/health`
-- Contas de desenvolvimento: `pnpm --filter @axis/api db:seed` cria um usuário por perfil (veja [Usuários e login](#usuários-e-login))
+- Contas e parâmetros: `pnpm --filter @axis/api db:seed` cria uma conta por perfil (veja [Seed e reset](#seed-e-reset))
 - Documentação: `http://localhost:3000/docs/` (o JSON do OpenAPI está em `/docs/openapi.json`)
 
 Se a porta 5432 já estiver ocupada por outro Postgres, suba com `POSTGRES_PORT=5433 pnpm db:up` e troque a porta nas duas URLs do `.env`. Para parar o banco: `pnpm db:down` (os dados ficam no volume; `docker compose down -v` apaga tudo).
@@ -38,6 +38,7 @@ O ambiente é validado com Zod ao subir. Se faltar variável ou alguma for invá
 | `DATABASE_URL` | Conexão das requisições (no Neon, a URL com pooler) |
 | `DATABASE_URL_UNPOOLED` | Conexão direta, sem pooler, usada pelas migrations |
 | `JWT_SECRET` | Segredo que assina os tokens de login (mínimo de 32 caracteres) |
+| `SEED_PASSWORD_SELLER`, `SEED_PASSWORD_COORDINATOR`, `SEED_PASSWORD_DIRECTOR`, `SEED_PASSWORD_ADMINISTRATOR` | Senhas das contas do seed. Só o comando de seed as lê: a API sobe sem elas, e o Render não precisa delas |
 
 ## Usuários e login
 
@@ -46,7 +47,55 @@ O ambiente é validado com Zod ao subir. Se faltar variável ou alguma for invá
 - O login é limitado por endereço (padrão em `DEFAULT_LOGIN_RATE_LIMIT`: 30 tentativas por minuto, contando acertos e erros) (`429 MUITAS_TENTATIVAS`). Atrás do proxy do Render, `trustProxy: 1` (ligado quando `NODE_ENV=production`) faz o endereço vir do `X-Forwarded-For`, confiando só nesse salto para o cliente não forjar o cabeçalho. O contador fica na memória de cada instância e zera a cada deploy.
 - Conta inexistente, senha errada e conta desativada respondem o mesmo `401 CREDENCIAIS_INVALIDAS`, para não revelar se o e-mail ou a matrícula existe.
 - O banco garante que o coordenador do vendedor é mesmo um coordenador (trigger em `drizzle/0002_coordinator_rule.sql`). Usuário só é criado por `createUser` ([`src/users/create-user.ts`](./src/users/create-user.ts)), usado pelo seed e pelos testes; a tela do Administrador vem em outro ticket.
-- `pnpm --filter @axis/api db:seed` cria quatro contas de desenvolvimento (`admin@axis.dev`, `diretor@axis.dev`, `coordenador@axis.dev` e `vendedor@axis.dev`, senha `axis-dev-123`). Só roda contra um Postgres local (recusa qualquer `DATABASE_URL` que não seja localhost).
+
+## Seed e reset
+
+O seed cria os Parâmetros do sistema (raio de 100 m; pesos 50/30/20) e uma conta por perfil. A senha de cada conta vem da variável do seu perfil, sem valor padrão no código:
+
+| Perfil | E-mail | Matrícula | Senha em |
+|---|---|---|---|
+| Coordenador | `gestor@axis.example` | `1001` | `SEED_PASSWORD_COORDINATOR` |
+| Vendedor (Equipe do Coordenador) | `vendedor@axis.example` | `2001` | `SEED_PASSWORD_SELLER` |
+| Diretor | `diretor@axis.example` | `3001` | `SEED_PASSWORD_DIRECTOR` |
+| Administrador | `administrador@axis.example` | `4001` | `SEED_PASSWORD_ADMINISTRATOR` |
+
+### Em dev
+
+```bash
+pnpm --filter @axis/api db:seed    # as senhas vêm do .env copiado do .env.example
+pnpm --filter @axis/api db:reset   # zera os dados, sem confirmação
+```
+
+O banco precisa estar migrado: suba a API ao menos uma vez antes do primeiro seed.
+
+- **O seed pode rodar de novo.** Ele só cria o que falta e não mexe no que já existe: um raio ajustado, uma senha trocada e uma conta desativada continuam como estão. Por isso, trocar uma variável de senha não muda a senha de uma conta existente. Para recomeçar do zero: `db:reset` e depois `db:seed`.
+- **O reset** apaga os dados de todas as tabelas, mas mantém as tabelas e o histórico das migrations.
+- **Banco de dev antigo:** as contas `@axis.dev` do seed anterior não somem sozinhas. Rode `db:reset` e `db:seed` uma vez para ficar só com as contas acima.
+- **O deploy nunca roda seed nem reset:** a subida da API só aplica migrations, e os dois comandos ficam fora do `dist/server.js`.
+
+### Em production (Neon)
+
+O Render Free não tem shell, então os comandos rodam da máquina de um integrante, contra a **URL direta (sem pooler)** do Neon. As variáveis do terminal valem mais que as do `.env`:
+
+```bash
+export NODE_ENV=production
+export DATABASE_URL_UNPOOLED='postgres://...'      # URL direta, do painel do Neon
+export SEED_PASSWORD_SELLER='...'                  # as quatro senhas, do gerenciador de senhas
+export SEED_PASSWORD_COORDINATOR='...'
+export SEED_PASSWORD_DIRECTOR='...'
+export SEED_PASSWORD_ADMINISTRATOR='...'
+
+pnpm --filter @axis/api db:reset                   # recusa e mostra o host de destino
+pnpm --filter @axis/api db:reset --confirm=<host>  # confira o host: isto apaga tudo
+pnpm --filter @axis/api db:seed
+```
+
+Cuidados:
+
+- Qualquer banco fora da máquina local é tratado como production, mesmo sem `NODE_ENV=production`. Assim, apontar a URL para o Neon com o `.env` de dev não zera o banco real sem a confirmação.
+- A confirmação é o próprio host de destino: só vale se for igual ao da URL.
+- Nesse caso o seed recusa as senhas do `.env.example`, que são públicas.
+- Feche o terminal ao terminar, para não rodar outro comando contra o Neon sem querer.
 
 ## Clientes e rotas
 
