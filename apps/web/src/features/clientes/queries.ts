@@ -17,8 +17,8 @@ export const clientesKeys = {
   detail: (id: string) => [...clientesKeys.all, 'detail', id] as const,
 }
 
-/** Query string da listagem, sem os filtros vazios. */
-export function paraQueryString(filtros: Partial<CustomerFilters>): string {
+/** Query string de uma listagem, sem os filtros vazios. */
+export function paraQueryString(filtros: Readonly<Record<string, unknown>>): string {
   const parametros = new URLSearchParams()
   for (const [chave, valor] of Object.entries(filtros)) {
     if (valor !== undefined && valor !== '') {

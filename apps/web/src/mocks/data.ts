@@ -1,4 +1,5 @@
-import type { Customer, User } from '@axis/contracts'
+import type { Customer, Route, User, Visit } from '@axis/contracts'
+import { hojeEmSaoPaulo } from '../lib/datas'
 
 /** Senha fictícia aceita pela API simulada para os usuários de teste. Só existe no MSW. */
 export const SENHA_DEMO = 'axis-demo-2026'
@@ -20,6 +21,14 @@ export const usuariosMock: User[] = [
     registration: '2001',
     role: 'seller',
     // Vendedor da Equipe da Maria.
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a3',
+    name: 'Diego Exemplo',
+    email: 'vendedor2@axis.example',
+    registration: '2002',
+    role: 'seller',
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
   },
 ]
@@ -161,4 +170,93 @@ export const clientesMock: Customer[] = [
     createdAt: '2026-10-15T12:00:00Z',
     updatedAt: '2026-10-15T12:00:00Z',
   },
+]
+
+// Rotas e Visitas fictícias, relativas ao dia de hoje para a tela sempre ter o que mostrar.
+// Ids terminados em b0N são rotas; cRP é a visita da posição P da rota R.
+const HOJE = hojeEmSaoPaulo()
+const ONTEM = new Date(Date.parse(`${HOJE}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+const BRUNO = VENDEDOR
+const DIEGO = '0192f4a0-0000-7000-8000-0000000000a3'
+const cliente = (n: number) => `0192f4a0-0000-7000-8000-00000000000${n}`
+
+export const rotasMock: Route[] = [
+  rota('0192f4a0-0000-7000-8000-000000000b01', BRUNO, HOJE),
+  rota('0192f4a0-0000-7000-8000-000000000b02', DIEGO, HOJE),
+  rota('0192f4a0-0000-7000-8000-000000000b03', BRUNO, ONTEM),
+]
+
+function rota(id: string, sellerId: string, date: string): Route {
+  const instante = `${date}T10:00:00Z`
+  return { id, sellerId, date, createdById: COORDENADORA, createdAt: instante, updatedAt: instante }
+}
+
+type Andamento =
+  | { estado: 'pendente' }
+  | { estado: 'em_andamento'; foraDoRaio?: boolean }
+  | { estado: 'concluida' | 'nao_realizada' }
+
+function visita(
+  rotaId: string,
+  data: string,
+  n: number,
+  position: number,
+  andamento: Andamento,
+): Visit {
+  const id = `0192f4a0-0000-7000-8000-000000000c${rotaId.at(-1)}${position}`
+  const base: Visit = {
+    id,
+    routeId: rotaId,
+    customerId: cliente(n),
+    position,
+    checkedInAt: null,
+    checkInLatitude: null,
+    checkInLongitude: null,
+    checkInAccuracyMeters: null,
+    checkInDistanceMeters: null,
+    checkInStatus: null,
+    checkInJustification: null,
+    checkedOutAt: null,
+    outcome: null,
+    outcomeJustification: null,
+    summary: null,
+    createdAt: `${data}T10:00:00Z`,
+    updatedAt: `${data}T10:00:00Z`,
+  }
+  if (andamento.estado === 'pendente') {
+    return base
+  }
+  const foraDoRaio = andamento.estado === 'em_andamento' && andamento.foraDoRaio
+  const comCheckIn: Visit = {
+    ...base,
+    checkedInAt: `${data}T1${position}:00:00Z`,
+    checkInLatitude: -16.68,
+    checkInLongitude: -49.26,
+    checkInAccuracyMeters: 8,
+    checkInDistanceMeters: foraDoRaio ? 240 : 35,
+    checkInStatus: foraDoRaio ? 'out_of_radius' : 'on_site',
+    checkInJustification: foraDoRaio ? 'Cliente mudou de endereço; atendi na loja nova.' : null,
+  }
+  if (andamento.estado === 'em_andamento') {
+    return comCheckIn
+  }
+  const concluida = andamento.estado === 'concluida'
+  return {
+    ...comCheckIn,
+    checkedOutAt: `${data}T1${position}:40:00Z`,
+    outcome: concluida ? 'sale_made' : 'customer_closed',
+    outcomeJustification: concluida ? null : 'Loja fechada no horário da visita.',
+    summary: concluida ? 'Pedido de reposição.' : null,
+  }
+}
+
+export const visitasMock: Visit[] = [
+  visita(rotasMock[0].id, HOJE, 1, 1, { estado: 'concluida' }),
+  visita(rotasMock[0].id, HOJE, 2, 2, { estado: 'em_andamento', foraDoRaio: true }),
+  visita(rotasMock[0].id, HOJE, 5, 3, { estado: 'nao_realizada' }),
+  visita(rotasMock[0].id, HOJE, 4, 4, { estado: 'pendente' }),
+  visita(rotasMock[1].id, HOJE, 4, 1, { estado: 'pendente' }),
+  visita(rotasMock[1].id, HOJE, 2, 2, { estado: 'pendente' }),
+  visita(rotasMock[2].id, ONTEM, 1, 1, { estado: 'concluida' }),
+  visita(rotasMock[2].id, ONTEM, 4, 2, { estado: 'concluida' }),
 ]
