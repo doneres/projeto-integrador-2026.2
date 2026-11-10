@@ -1,6 +1,7 @@
-import { loginBodySchema } from '@axis/contracts'
+import { latitudeSchema, loginBodySchema, longitudeSchema } from '@axis/contracts'
 import { z } from 'zod'
 import { EnvError, envSchema, parseEnv } from '../env'
+import type { Coordinates } from '../geo/distance'
 import type { SeedPasswords } from './base'
 
 /** Banco em que o seed e o reset vão mexer. */
@@ -29,6 +30,18 @@ const passwordsSchema = z.object({
   SEED_PASSWORD_ADMINISTRATOR: password,
 })
 
+// Vazia conta como ausente: Number('') seria 0, uma coordenada válida no meio do oceano.
+const coordinate = (range: z.ZodNumber) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.coerce.number().pipe(range).optional(),
+  )
+
+const demoLocationSchema = z.object({
+  SEED_DEMO_LATITUDE: coordinate(latitudeSchema),
+  SEED_DEMO_LONGITUDE: coordinate(longitudeSchema),
+})
+
 /**
  * Banco fora da máquina conta como production mesmo sem NODE_ENV=production: quem aponta a URL
  * para o Neon com o .env de dev na máquina não pode zerar o banco real sem a cerimônia.
@@ -41,6 +54,20 @@ export function loadDatabaseTarget(source: Record<string, string | undefined>): 
     host: hostname,
     production: env.NODE_ENV === 'production' || !LOCAL_HOSTS.includes(hostname),
   }
+}
+
+/** Coordenada que sobrescreve a do Cliente de demonstração: as duas variáveis, ou nenhuma. */
+export function loadDemoLocation(
+  source: Record<string, string | undefined>,
+): Coordinates | undefined {
+  const { SEED_DEMO_LATITUDE: latitude, SEED_DEMO_LONGITUDE: longitude } = parseEnv(
+    demoLocationSchema,
+    source,
+  )
+  if (latitude === undefined && longitude === undefined) return undefined
+  if (latitude === undefined) throw new EnvError(['SEED_DEMO_LATITUDE: variável ausente'])
+  if (longitude === undefined) throw new EnvError(['SEED_DEMO_LONGITUDE: variável ausente'])
+  return { latitude, longitude }
 }
 
 /** Só o comando de seed chama isto: a API sobe sem essas variáveis. */

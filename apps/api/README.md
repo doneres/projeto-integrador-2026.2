@@ -22,7 +22,7 @@ pnpm dev:api                                  # aplica as migrations e escuta em
 ```
 
 - Saúde: `GET http://localhost:3000/health`
-- Contas e parâmetros: `pnpm --filter @axis/api db:seed` cria uma conta por perfil (veja [Seed e reset](#seed-e-reset))
+- Contas e parâmetros: `pnpm --filter @axis/api db:seed` cria uma conta por perfil, e com `--profile=demo` também duas Equipes, Clientes e rotas (veja [Seed e reset](#seed-e-reset))
 - Documentação: `http://localhost:3000/docs/` (o JSON do OpenAPI está em `/docs/openapi.json`)
 
 Se a porta 5432 já estiver ocupada por outro Postgres, suba com `POSTGRES_PORT=5433 pnpm db:up` e troque a porta nas duas URLs do `.env`. Para parar o banco: `pnpm db:down` (os dados ficam no volume; `docker compose down -v` apaga tudo).
@@ -50,7 +50,7 @@ O ambiente é validado com Zod ao subir. Se faltar variável ou alguma for invá
 
 ## Seed e reset
 
-O seed cria os Parâmetros do sistema (raio de 100 m; pesos 50/30/20) e uma conta por perfil. A senha de cada conta vem da variável do seu perfil, sem valor padrão no código:
+O seed tem dois perfis. `base` (o padrão) cria os Parâmetros do sistema (raio de 100 m; pesos 50/30/20) e uma conta por perfil. `demo` faz o mesmo e acrescenta a massa de demonstração. A senha de cada conta vem da variável do seu perfil, sem valor padrão no código; todas as contas de um perfil têm a mesma senha.
 
 | Perfil | E-mail | Matrícula | Senha em |
 |---|---|---|---|
@@ -59,14 +59,39 @@ O seed cria os Parâmetros do sistema (raio de 100 m; pesos 50/30/20) e uma cont
 | Diretor | `diretor@axis.example` | `3001` | `SEED_PASSWORD_DIRECTOR` |
 | Administrador | `administrador@axis.example` | `4001` | `SEED_PASSWORD_ADMINISTRATOR` |
 
+### Massa de demonstração
+
+`--profile=demo` acrescenta estas contas às de cima (a Maria Souza, `1001`, coordena a Equipe A e o Bruno Exemplo, `2001`, é o Vendedor showcase dela):
+
+| Conta | E-mail | Matrícula | Papel |
+|---|---|---|---|
+| Carlos Modelo | `coordenador.b@axis.example` | `1002` | Coordenador da Equipe B |
+| Ana Exemplo | `vendedor.a2@axis.example` | `2002` | Vendedora de teste, Equipe A |
+| Caio Exemplo | `vendedor.a3@axis.example` | `2003` | Vendedor de teste, Equipe A |
+| Lia Modelo | `vendedor.b1@axis.example` | `2004` | Vendedora de teste, Equipe B |
+| Davi Modelo | `vendedor.b2@axis.example` | `2005` | Vendedor de teste, Equipe B |
+| Rita Modelo | `vendedor.b3@axis.example` | `2006` | Vendedora de teste, Equipe B |
+| Otávio Exemplo | `vendedor.desativado@axis.example` | `2099` | Vendedor desativado, Equipe A: não entra |
+
+E também:
+
+- **Clientes:** 24 de carteira ativos em Goiânia (12 por Equipe), 2 Inativos, 4 Prospecções Pendentes de aprovação (3 na Equipe A e 1 na B), 2 aprovadas no mês corrente e 1 Rejeitada com motivo.
+- **Cliente de demonstração:** um por Equipe, na mesma coordenada, porque a rota só aceita Clientes da Equipe do Vendedor. A coordenada padrão fica em Goiânia. Para fazer um Check-in No Local de verdade, defina `SEED_DEMO_LATITUDE` e `SEED_DEMO_LONGITUDE` (as duas juntas) e rode o seed: isso vale também para o Cliente que já existe, sem precisar de reset. Sem as variáveis, ele continua onde está. Os outros Clientes não se movem. As rotas criadas a partir daí se medem da nova coordenada; as que já existiam não mudam, então, para refazê-las, defina as variáveis e rode `db:reset` antes do seed.
+- **Rotas de hoje e de amanhã**, mesmo em fim de semana, para os seis Vendedores ativos. As dos cinco Vendedores de teste nascem 100 % Pendentes e começam pelo Cliente de demonstração, seguindo por Clientes a mais de 200 m dele, do mais perto para o mais longe. A de hoje do Bruno tem duas Visitas Concluídas, uma Em andamento e o resto Pendente.
+
+As datas saem do dia da execução no fuso America/Sao_Paulo, e o resto vem de um gerador com semente fixa: os Clientes e a ordem das rotas são os mesmos em toda execução. A massa é fictícia: nomes Exemplo ou Modelo (fora a Maria, a mesma do mock do web), e-mails em `axis.example` e CNPJs alfanuméricos gerados, que não coincidem com nenhum CNPJ numérico já emitido. Histórico, Pedidos, Comodatos e Metas entram no seed junto com as tabelas deles.
+
 ### Em dev
 
 ```bash
-pnpm --filter @axis/api db:seed    # as senhas vêm do .env copiado do .env.example
-pnpm --filter @axis/api db:reset   # zera os dados, sem confirmação
+pnpm --filter @axis/api db:seed                  # só a camada base; as senhas vêm do .env copiado do .env.example
+pnpm --filter @axis/api db:seed --profile=demo   # base e massa de demonstração
+pnpm --filter @axis/api db:reset                 # zera os dados, sem confirmação
 ```
 
 O banco precisa estar migrado: suba a API ao menos uma vez antes do primeiro seed.
+
+**As rotas não andam sozinhas.** Rode o seed demo no dia em que for usar: em um dia posterior, ele acrescenta as datas que faltam, sem refazer as que já existem. Uma rota de teste em que alguém já fez Check-in continua como está; para voltar ao estado inicial entre rodadas de teste, use `db:reset` e `db:seed --profile=demo`. O mesmo vale ao virar o mês: as Prospecções aprovadas guardam o mês em que foram criadas, e a Visita Em andamento de um dia anterior continua aberta até o reset.
 
 - **O seed pode rodar de novo.** Ele só cria o que falta e não mexe no que já existe: um raio ajustado, uma senha trocada e uma conta desativada continuam como estão. Por isso, trocar uma variável de senha não muda a senha de uma conta existente. Para recomeçar do zero: `db:reset` e depois `db:seed`.
 - **O reset** apaga os dados de todas as tabelas, mas mantém as tabelas e o histórico das migrations.
@@ -87,7 +112,7 @@ export SEED_PASSWORD_ADMINISTRATOR='...'
 
 pnpm --filter @axis/api db:reset                   # recusa e mostra o host de destino
 pnpm --filter @axis/api db:reset --confirm=<host>  # confira o host: isto apaga tudo
-pnpm --filter @axis/api db:seed
+pnpm --filter @axis/api db:seed --profile=demo     # ou sem o --profile, só com a camada base
 ```
 
 Cuidados:

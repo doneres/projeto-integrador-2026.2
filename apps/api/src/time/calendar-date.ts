@@ -12,3 +12,15 @@ const formatter = new Intl.DateTimeFormat('en-CA', {
 export function calendarDateInSaoPaulo(instant: Date): string {
   return formatter.format(instant)
 }
+
+/** A data de calendário `days` dias depois. Conta em UTC, onde todo dia tem 24 horas. */
+export function addCalendarDays(date: string, days: number): string {
+  const instant = new Date(`${date}T00:00:00Z`)
+  instant.setUTCDate(instant.getUTCDate() + days)
+  return instant.toISOString().slice(0, 10)
+}
+
+/** O instante em que a data começa em São Paulo. O Brasil não tem horário de verão desde 2019. */
+export function startOfDayInSaoPaulo(date: string): Date {
+  return new Date(`${date}T00:00:00-03:00`)
+}
