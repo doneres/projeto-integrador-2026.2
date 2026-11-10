@@ -10,6 +10,12 @@ import { randomFrom, SEED } from './demo-data'
 const STOPS_PER_DAY = 5
 const FIRST_CHECK_IN_HOUR = 8
 const MINUTES_BETWEEN_STOPS = 90
+/** Atraso sorteado de cada chegada, em minutos. */
+const CHECK_IN_JITTER_MINUTES = 20
+/** Duração da Visita: de 15 a 59 minutos. */
+const VISIT_MINUTES = [15, 60] as const
+/** Primo que separa as sementes de duas matrículas vizinhas na mesma data. */
+const REGISTRATION_SEED_STRIDE = 100_003
 const MINUTE_MS = 60 * 1000
 
 const OUT_OF_RADIUS_SHARE = 0.08
@@ -28,7 +34,7 @@ const OUTCOME_THRESHOLDS: readonly [Outcome, number][] = [
   ['not_performed', 1],
 ]
 
-const SUMMARY: Record<Outcome, string | null> = {
+const OUTCOME_SUMMARIES: Record<Outcome, string | null> = {
   sale_made: 'Pedido de reposição registrado.',
   audit_only: 'Gôndola conferida, sem necessidade de pedido.',
   customer_closed: null,
@@ -123,7 +129,7 @@ export function historicVisits({
   radiusMeters,
 }: HistoricRouteInput): HistoricVisit[] {
   const random = randomFrom(
-    SEED + Number(registration) * 100_003 + Number(date.replaceAll('-', '')),
+    SEED + Number(registration) * REGISTRATION_SEED_STRIDE + Number(date.replaceAll('-', '')),
   )
 
   // Fisher-Yates parcial: os primeiros STOPS_PER_DAY de um embaralhamento.
@@ -138,17 +144,19 @@ export function historicVisits({
 
   return pool.slice(0, stops).map((customer, index) => {
     const checkedInAt = new Date(
-      dayStart + (index * MINUTES_BETWEEN_STOPS + Math.floor(random() * 20)) * MINUTE_MS,
+      dayStart +
+        (index * MINUTES_BETWEEN_STOPS + Math.floor(random() * CHECK_IN_JITTER_MINUTES)) *
+          MINUTE_MS,
     )
     const checkedOutAt = new Date(
-      checkedInAt.getTime() + (15 + Math.floor(random() * 45)) * MINUTE_MS,
+      checkedInAt.getTime() + Math.floor(between(random, VISIT_MINUTES)) * MINUTE_MS,
     )
 
     const outOfRadius = random() < OUT_OF_RADIUS_SHARE
-    const offset = outOfRadius
+    const offsetMeters = outOfRadius
       ? radiusMeters + between(random, OUT_OF_RADIUS_EXTRA_METERS)
       : random() * radiusMeters * ON_SITE_RADIUS_SHARE
-    const position = pointAround(random, customer, offset)
+    const position = pointAround(random, customer, offsetMeters)
     const distance = distanceInMeters(position, customer)
     const checkInStatus: CheckInStatus = distance <= radiusMeters ? 'on_site' : 'out_of_radius'
 
@@ -175,7 +183,7 @@ export function historicVisits({
       outcome,
       outcomeJustification:
         status === 'not_performed' ? pick(random, OUTCOME_JUSTIFICATIONS[outcome] ?? []) : null,
-      summary: SUMMARY[outcome],
+      summary: OUTCOME_SUMMARIES[outcome],
     }
   })
 }

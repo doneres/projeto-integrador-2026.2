@@ -18,12 +18,11 @@ import {
   demonstrationCustomerOf,
   routePlan,
   SEEDED_CUSTOMERS,
-  type SellerKey,
   SHOWCASE_SELLER,
   TEST_SELLERS,
   type Team,
 } from './demo-data'
-import { seedHistory } from './history'
+import { type HistorySeller, seedHistory } from './history'
 
 export type DemoOptions = {
   passwords: SeedPasswords
@@ -67,7 +66,7 @@ export async function seedDemo(db: Database, { passwords, now, demoLocation }: D
       active,
     })
   await ensureSeller(DISABLED_SELLER, false)
-  const routeSellers: (SellerKey & { id: string })[] = [{ ...SHOWCASE_SELLER, id: showcase.id }]
+  const routeSellers: HistorySeller[] = [{ ...SHOWCASE_SELLER, id: showcase.id }]
   for (const seller of TEST_SELLERS) {
     routeSellers.push({ ...seller, id: (await ensureSeller(seller)).id })
   }

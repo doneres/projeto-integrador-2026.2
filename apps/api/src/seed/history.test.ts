@@ -8,6 +8,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { type Harness, harness, withHarness } from '../../test/support/demo-harness'
 import { distanceInMeters } from '../geo/distance'
+import { calendarDateInSaoPaulo } from '../time/calendar-date'
 
 // Terça-feira, 12h em Brasília: o histórico vai de 1º de outubro a segunda, 9 de novembro.
 const TUESDAY = new Date('2026-11-10T15:00:00Z')
@@ -17,6 +18,10 @@ const SELLERS = ['2001', '2002', '2003', '2004', '2005', '2006']
 const RADIUS = 100
 /** Semear e ler ~200 rotas pela API leva alguns segundos com a suíte inteira em paralelo. */
 const SLOW = 60_000
+
+/** Dentro de 3 pontos percentuais do alvo: a semente é fixa, então o desvio não oscila. */
+const expectShare = (actual: number, target: number) =>
+  expect(Math.abs(actual - target), `${actual} vs ${target}`).toBeLessThanOrEqual(0.03)
 
 const routePage = pageOf(routeSchema)
 
@@ -83,16 +88,16 @@ describe('histórico do seed demo', () => {
   it('existem os quatro Desfechos, perto de 55 / 25 / 10 / 10 %', () => {
     const share = (outcome: string) =>
       visits.filter((visit) => visit.outcome === outcome).length / visits.length
-    expect(share('sale_made')).toBeCloseTo(0.55, 1)
-    expect(share('audit_only')).toBeCloseTo(0.25, 1)
-    expect(share('customer_closed')).toBeCloseTo(0.1, 1)
-    expect(share('not_performed')).toBeCloseTo(0.1, 1)
+    expectShare(share('sale_made'), 0.55)
+    expectShare(share('audit_only'), 0.25)
+    expectShare(share('customer_closed'), 0.1)
+    expectShare(share('not_performed'), 0.1)
   })
 
   it('há Flags de auditoria: cerca de 8 % Fora do Raio, todas com justificativa', () => {
     const flagged = visits.filter((visit) => visit.checkInStatus === 'out_of_radius')
     expect(flagged.length).toBeGreaterThan(0)
-    expect(flagged.length / visits.length).toBeCloseTo(0.08, 1)
+    expectShare(flagged.length / visits.length, 0.08)
     for (const visit of flagged) {
       expect(visit.checkInJustification).toBeTruthy()
       expect(visit.checkInDistanceMeters ?? 0).toBeGreaterThan(RADIUS)
@@ -121,7 +126,7 @@ describe('histórico do seed demo', () => {
       expect(
         visit.checkedInAt && visit.checkedOutAt && visit.checkedOutAt > visit.checkedInAt,
       ).toBe(true)
-      expect(visit.checkedInAt?.slice(0, 10)).toBe(
+      expect(calendarDateInSaoPaulo(new Date(visit.checkedInAt ?? ''))).toBe(
         history.find((route) => route.id === visit.routeId)?.date,
       )
     }

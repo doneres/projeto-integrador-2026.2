@@ -40,6 +40,10 @@ const sample = sellers.flatMap((registration) =>
   ),
 )
 
+/** Dentro de 3 pontos percentuais do alvo: a semente é fixa, então o desvio não oscila. */
+const expectShare = (actual: number, target: number) =>
+  expect(Math.abs(actual - target), `${actual} vs ${target}`).toBeLessThanOrEqual(0.03)
+
 const share = (predicate: (v: (typeof sample)[number]) => boolean) =>
   sample.filter(predicate).length / sample.length
 
@@ -71,10 +75,22 @@ describe('historicVisits', () => {
 
   it('Desfechos perto de 55 / 25 / 10 / 10 %, com justificativa nos que não realizam', () => {
     expect(sample.length).toBeGreaterThan(500)
-    expect(share((v) => v.outcome === 'sale_made')).toBeCloseTo(0.55, 1)
-    expect(share((v) => v.outcome === 'audit_only')).toBeCloseTo(0.25, 1)
-    expect(share((v) => v.outcome === 'customer_closed')).toBeCloseTo(0.1, 1)
-    expect(share((v) => v.outcome === 'not_performed')).toBeCloseTo(0.1, 1)
+    expectShare(
+      share((v) => v.outcome === 'sale_made'),
+      0.55,
+    )
+    expectShare(
+      share((v) => v.outcome === 'audit_only'),
+      0.25,
+    )
+    expectShare(
+      share((v) => v.outcome === 'customer_closed'),
+      0.1,
+    )
+    expectShare(
+      share((v) => v.outcome === 'not_performed'),
+      0.1,
+    )
     for (const visit of sample) {
       const performed =
         visitStatusOf({
@@ -87,7 +103,10 @@ describe('historicVisits', () => {
   })
 
   it('cerca de 8 % Fora do Raio, com justificativa; a distância gravada é a real', () => {
-    expect(share((v) => v.checkInStatus === 'out_of_radius')).toBeCloseTo(0.08, 1)
+    expectShare(
+      share((v) => v.checkInStatus === 'out_of_radius'),
+      0.08,
+    )
     for (const visit of sample) {
       const customer = byId.get(visit.customerId) as HistoricCustomer
       const distance = distanceInMeters(
