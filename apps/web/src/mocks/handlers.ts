@@ -1,6 +1,7 @@
 import {
   type Customer,
   type CustomerFilters,
+  createRouteBodySchema,
   customerFiltersSchema,
   customerInputSchema,
   customerStatusChangeSchema,
@@ -9,17 +10,25 @@ import {
   loginBodySchema,
   normalizarDocumento,
   type Page,
+  type Route,
+  type RouteDetail,
+  routeFiltersSchema,
   type Session,
   type User,
+  userFiltersSchema,
+  type Visit,
+  visitStatusOf,
 } from '@axis/contracts'
 import { delay, HttpResponse, http } from 'msw'
-import { clientesMock, SENHA_DEMO, usuariosMock } from './data'
+import { clientesMock, rotasMock, SENHA_DEMO, usuariosMock, visitasMock } from './data'
 
 const DURACAO_DA_SESSAO_MS = 8 * 60 * 60 * 1000
 const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
 
 // "Banco" em memória: volta aos dados de exemplo quando a página recarrega.
 let clientes: Customer[] = structuredClone(clientesMock)
+let rotas: Route[] = structuredClone(rotasMock)
+let visitas: Visit[] = structuredClone(visitasMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 
@@ -98,6 +107,49 @@ function documentoEmUso(documento: string, idIgnorado?: string): boolean {
   )
 }
 
+function pagina<T>(itens: T[], page: number, perPage: number): Page<T> {
+  const inicio = (page - 1) * perPage
+  return { items: itens.slice(inicio, inicio + perPage), total: itens.length, page, perPage }
+}
+
+/** Vendedores que o usuário enxerga: o Coordenador, os da Equipe; o Diretor, todos. */
+function idsDaEquipe(usuario: User): string[] {
+  return usuariosMock
+    .filter(
+      (u) => u.role === 'seller' && (usuario.role === 'director' || u.coordinatorId === usuario.id),
+    )
+    .map((u) => u.id)
+}
+
+/** Escopo de rotas da API (#58): Vendedor, as suas; Coordenador, a Equipe; Diretor, todas. */
+function rotasVisiveis(usuario: User): Route[] {
+  if (usuario.role === 'seller') {
+    return rotas.filter((r) => r.sellerId === usuario.id)
+  }
+  const equipe = idsDaEquipe(usuario)
+  return rotas.filter((r) => equipe.includes(r.sellerId))
+}
+
+/** A rota com as Visitas pela posição, o estado derivado e o Cliente, como GET /v1/routes/{id}. */
+function detalhe(rota: Route): RouteDetail {
+  const daRota = visitas
+    .filter((v) => v.routeId === rota.id)
+    .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
+  return {
+    ...rota,
+    visits: daRota.map((v) => {
+      const cliente = clientes.find((c) => c.id === v.customerId)
+      if (!cliente) {
+        throw new Error(`Visita ${v.id} aponta para um cliente que não existe no mock`)
+      }
+      return { ...v, status: visitStatusOf(v), customer: cliente }
+    }),
+  }
+}
+
+const rotaNaoEncontrada = () =>
+  problema(404, 'NAO_ENCONTRADO', 'Não encontrado', { detail: 'Rota não encontrada.' })
+
 function validacao(erros: ErroDeCampo[]) {
   return problema(422, 'VALIDACAO', 'Dados inválidos', { erros })
 }
@@ -138,16 +190,8 @@ export const handlers = [
     if (!consulta.success) {
       return validacao(errosDeValidacao(consulta.error))
     }
-    const encontrados = filtrar(daEquipe(usuario), consulta.data)
     const { page, perPage } = consulta.data
-    const inicio = (page - 1) * perPage
-    const corpo: Page<Customer> = {
-      items: encontrados.slice(inicio, inicio + perPage),
-      total: encontrados.length,
-      page,
-      perPage,
-    }
-    return HttpResponse.json(corpo)
+    return HttpResponse.json(pagina(filtrar(daEquipe(usuario), consulta.data), page, perPage))
   }),
 
   http.get('/v1/customers/:id', async ({ request, params }) => {
@@ -252,5 +296,128 @@ export const handlers = [
     const atualizado: Customer = { ...atual, status: corpo.data.status, updatedAt: agora() }
     clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
     return HttpResponse.json(atualizado)
+  }),
+
+  // Usuários e montagem de rota: imitam o que a #79 vai entregar na API real.
+  http.get('/v1/users', async ({ request }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator' && usuario.role !== 'director') {
+      return semPermissao()
+    }
+    const consulta = userFiltersSchema.safeParse(
+      Object.fromEntries(new URL(request.url).searchParams),
+    )
+    if (!consulta.success) {
+      return validacao(errosDeValidacao(consulta.error))
+    }
+    const { role, page, perPage } = consulta.data
+    const equipe = idsDaEquipe(usuario)
+    const encontrados = usuariosMock
+      .filter((u) => equipe.includes(u.id) && (!role || u.role === role))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    return HttpResponse.json(pagina(encontrados, page, perPage))
+  }),
+
+  http.get('/v1/routes', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role === 'administrator') {
+      return semPermissao()
+    }
+    const consulta = routeFiltersSchema.safeParse(
+      Object.fromEntries(new URL(request.url).searchParams),
+    )
+    if (!consulta.success) {
+      return validacao(errosDeValidacao(consulta.error))
+    }
+    const { date, sellerId, page, perPage } = consulta.data
+    const encontradas = rotasVisiveis(usuario)
+      .filter((r) => (!date || r.date === date) && (!sellerId || r.sellerId === sellerId))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+    return HttpResponse.json(pagina(encontradas, page, perPage))
+  }),
+
+  http.get('/v1/routes/:id', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const rota = rotasVisiveis(usuario).find((r) => r.id === String(params.id))
+    return rota ? HttpResponse.json(detalhe(rota)) : rotaNaoEncontrada()
+  }),
+
+  http.post('/v1/routes', async ({ request }) => {
+    await delay(400)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const corpo = createRouteBodySchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const { sellerId, date, customerIds } = corpo.data
+    // Regras do modelo de dados (#26): vendedor e clientes da Equipe de quem monta; só cliente
+    // ativo entra em rota; uma rota por vendedor por dia.
+    if (!idsDaEquipe(usuario).includes(sellerId)) {
+      return validacao([{ campo: 'sellerId', mensagem: 'Escolha um vendedor da sua Equipe' }])
+    }
+    const validos = daEquipe(usuario).filter((c) => c.status === 'active')
+    if (!customerIds.every((id) => validos.some((c) => c.id === id))) {
+      return validacao([
+        { campo: 'customerIds', mensagem: 'Só clientes ativos da sua Equipe entram na rota' },
+      ])
+    }
+    if (rotas.some((r) => r.sellerId === sellerId && r.date === date)) {
+      return problema(409, 'ROTA_JA_EXISTE', 'Rota já existe', {
+        detail: 'Este vendedor já tem uma rota nesta data.',
+      })
+    }
+    const instante = agora()
+    const nova: Route = {
+      id: crypto.randomUUID(),
+      sellerId,
+      date,
+      createdById: usuario.id,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    rotas = [...rotas, nova]
+    visitas = [
+      ...visitas,
+      ...customerIds.map(
+        (customerId, indice): Visit => ({
+          id: crypto.randomUUID(),
+          routeId: nova.id,
+          customerId,
+          position: indice + 1,
+          checkedInAt: null,
+          checkInLatitude: null,
+          checkInLongitude: null,
+          checkInAccuracyMeters: null,
+          checkInDistanceMeters: null,
+          checkInStatus: null,
+          checkInJustification: null,
+          checkedOutAt: null,
+          outcome: null,
+          outcomeJustification: null,
+          summary: null,
+          createdAt: instante,
+          updatedAt: instante,
+        }),
+      ),
+    ]
+    return HttpResponse.json(detalhe(nova), { status: 201 })
   }),
 ]
