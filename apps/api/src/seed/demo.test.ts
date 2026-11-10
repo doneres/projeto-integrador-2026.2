@@ -1,34 +1,11 @@
-import {
-  type Customer,
-  customerSchema,
-  pageOf,
-  type Route,
-  type RouteDetail,
-  routeDetailSchema,
-  routeSchema,
-  sessionSchema,
-} from '@axis/contracts'
+import type { Customer, Route } from '@axis/contracts'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { TEST_JWT_SECRET } from '../../test/support/config'
-import { createTestDatabase } from '../../test/support/database'
-import { buildApp } from '../app'
+import { type Harness, harness, passwords, withHarness } from '../../test/support/demo-harness'
 import { customers, routes, users, visits } from '../db/schema'
 import { distanceInMeters } from '../geo/distance'
 import { calendarDateInSaoPaulo } from '../time/calendar-date'
-import { seedDemo } from './demo'
 import { DEFAULT_DEMO_LOCATION } from './demo-data'
-import { loadDatabaseTarget, loadSeedPasswords } from './env'
-
-const passwords = loadSeedPasswords(
-  {
-    SEED_PASSWORD_SELLER: 'senha-teste-do-vendedor',
-    SEED_PASSWORD_COORDINATOR: 'senha-teste-do-coordenador',
-    SEED_PASSWORD_DIRECTOR: 'senha-teste-do-diretor',
-    SEED_PASSWORD_ADMINISTRATOR: 'senha-teste-do-administrador',
-  },
-  loadDatabaseTarget({ DATABASE_URL_UNPOOLED: 'postgres://axis:axis@localhost:5432/axis' }),
-)
 
 // Sábado, 12h em Brasília: a rota de hoje e a de amanhã (domingo) têm de existir mesmo assim.
 const SATURDAY = new Date('2026-11-07T15:00:00Z')
@@ -42,101 +19,11 @@ const TEST_SELLERS_A = ['2002', '2003']
 const TEST_SELLERS_B = ['2004', '2005', '2006']
 const TEST_SELLERS = [...TEST_SELLERS_A, ...TEST_SELLERS_B]
 
-const customerPage = pageOf(customerSchema)
-const routePage = pageOf(routeSchema)
-
-/** Um banco e uma API de teste, com o relógio dos dois sob controle do teste. */
-async function harness(initialClock: Date) {
-  const testDb = await createTestDatabase()
-  const state = { clock: initialClock }
-  const app = await buildApp({
-    db: testDb.db,
-    auth: { jwtSecret: TEST_JWT_SECRET, loginRateLimit: { max: 10_000, windowMs: 60_000 } },
-    now: () => state.clock,
-  })
-
-  const login = (identifier: string, password: string) =>
-    app.inject({ method: 'POST', url: '/v1/auth/login', payload: { identifier, password } })
-
-  const asRole = {
-    [COORDINATOR_A]: passwords.coordinator,
-    [COORDINATOR_B]: passwords.coordinator,
-    '3001': passwords.director,
-    '4001': passwords.administrator,
-  } as Record<string, string>
-
-  const sessionOf = async (registration: string) => {
-    const response = await login(registration, asRole[registration] ?? passwords.seller)
-    expect(response.statusCode, `login de ${registration}`).toBe(200)
-    return sessionSchema.parse(response.json())
-  }
-
-  const get = async (registration: string, url: string) => {
-    const { token } = await sessionOf(registration)
-    return app.inject({ method: 'GET', url, headers: { authorization: `Bearer ${token}` } })
-  }
-
-  const customersOf = async (registration: string): Promise<Customer[]> => {
-    const response = await get(registration, '/v1/customers?perPage=100')
-    expect(response.statusCode).toBe(200)
-    return customerPage.parse(response.json()).items
-  }
-
-  const routesOf = async (registration: string, date: string): Promise<Route[]> => {
-    const response = await get(registration, `/v1/routes?date=${date}&perPage=100`)
-    expect(response.statusCode).toBe(200)
-    return routePage.parse(response.json()).items
-  }
-
-  const routeOn = async (registration: string, date: string): Promise<RouteDetail> => {
-    const previous = state.clock
-    state.clock = new Date(`${date}T15:00:00Z`)
-    try {
-      const response = await get(registration, '/v1/routes/today')
-      expect(response.statusCode, `rota de ${registration} em ${date}`).toBe(200)
-      return routeDetailSchema.parse(response.json())
-    } finally {
-      state.clock = previous
-    }
-  }
-
-  return {
-    ...testDb,
-    app,
-    state,
-    login,
-    sessionOf,
-    get,
-    customersOf,
-    routesOf,
-    routeOn,
-    seed: (now: Date, demoLocation?: { latitude: number; longitude: number }) =>
-      seedDemo(testDb.db, { passwords, now, demoLocation }),
-    finish: async () => {
-      await app.close()
-      await testDb.drop()
-    },
-  }
-}
-
-async function withHarness(
-  clock: Date,
-  run: (h: Awaited<ReturnType<typeof harness>>) => Promise<void>,
-) {
-  const h = await harness(clock)
-  try {
-    await h.seed(clock)
-    await run(h)
-  } finally {
-    await h.finish()
-  }
-}
-
 const isDemoCustomer = (customer: { tradeName: string }) =>
   customer.tradeName.includes('Demonstração')
 
 describe('seedDemo', () => {
-  let h: Awaited<ReturnType<typeof harness>>
+  let h: Harness
 
   beforeAll(async () => {
     h = await harness(SATURDAY)
@@ -341,7 +228,10 @@ describe('seedDemo', () => {
       // 22h30 de 07/11 em Brasília; em UTC já é dia 08.
       const lateEvening = new Date('2026-11-08T01:30:00Z')
       await withHarness(lateEvening, async (other) => {
-        const dates = (await other.db.select().from(routes)).map((route) => route.date)
+        // As anteriores são o histórico, que tem teste próprio (history.test.ts).
+        const dates = (await other.db.select().from(routes))
+          .map((route) => route.date)
+          .filter((date) => date >= '2026-11-07')
         expect(new Set(dates)).toEqual(new Set(['2026-11-07', '2026-11-08']))
       })
     })
@@ -349,7 +239,9 @@ describe('seedDemo', () => {
     it('atravessa a virada de mês, com a aprovação no mês da execução', async () => {
       const lastDayOfMonth = new Date('2026-11-30T15:00:00Z')
       await withHarness(lastDayOfMonth, async (other) => {
-        const dates = (await other.db.select().from(routes)).map((route) => route.date)
+        const dates = (await other.db.select().from(routes))
+          .map((route) => route.date)
+          .filter((date) => date >= '2026-11-30')
         expect(new Set(dates)).toEqual(new Set(['2026-11-30', '2026-12-01']))
 
         const approved = (await other.customersOf('3001')).filter((c) => c.approvedAt)
