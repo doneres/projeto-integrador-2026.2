@@ -25,6 +25,9 @@ async function main() {
       printAccounts(report)
       console.log(`Clientes criados: ${report.customersCreated}`)
       console.log(`Rotas criadas: ${report.routesCreated}`)
+      console.log(
+        `Histórico: ${report.historyRoutesCreated} rotas e ${report.historyVisitsCreated} Visitas criadas`,
+      )
     } else {
       printAccounts(await seedBase(db, passwords))
     }

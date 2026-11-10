@@ -23,6 +23,7 @@ import {
   TEST_SELLERS,
   type Team,
 } from './demo-data'
+import { seedHistory } from './history'
 
 export type DemoOptions = {
   passwords: SeedPasswords
@@ -39,7 +40,8 @@ const CHECK_IN_OFFSET_DEGREES = 0.0002
 type CustomerRow = typeof customers.$inferSelect
 
 /**
- * Camada demo, sobre a base: duas Equipes, Clientes e as rotas de hoje e de amanhã. Como a base,
+ * Camada demo, sobre a base: duas Equipes, Clientes, as rotas de hoje e de amanhã e o histórico
+ * executado dos dias úteis do mês anterior e do corrente até ontem (`seedHistory`). Como a base,
  * só cria o que falta (por e-mail, matrícula, documento e Vendedor+data), então rodar de novo
  * preserva o que foi feito na demonstração; para recomeçar: reset + seed. A exceção é a coordenada
  * pedida em `demoLocation`, que vale também para o Cliente de demonstração que já existe.
@@ -162,7 +164,20 @@ export async function seedDemo(db: Database, { passwords, now, demoLocation }: D
 
   await executeShowcaseRoute(db, showcase.id, now)
 
-  return { ...report, customersCreated: missing.length, routesCreated }
+  const history = await seedHistory(db, {
+    now,
+    sellers: routeSellers,
+    coordinatorOf,
+    customers: [...customerByDocument.values()],
+  })
+
+  return {
+    ...report,
+    customersCreated: missing.length,
+    routesCreated,
+    historyRoutesCreated: history.routesCreated,
+    historyVisitsCreated: history.visitsCreated,
+  }
 }
 
 /**
