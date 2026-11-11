@@ -3,6 +3,7 @@ import {
   type CustomerSortField,
   customerFiltersSchema,
   customerInputSchema,
+  customerRejectionSchema,
   customerSchema,
   customerStatusChangeSchema,
   idSchema,
@@ -268,6 +269,110 @@ export async function customerRoutes(app: FastifyInstance) {
         .set({ status: request.body.status })
         // Confere o estado no próprio UPDATE: uma aprovação ou rejeição concorrente não é sobrescrita.
         .where(and(eq(customers.id, current.id), inArray(customers.status, ['active', 'inactive'])))
+        .returning()
+      if (!row) {
+        throw new ApiError(
+          409,
+          'TRANSICAO_INVALIDA',
+          'O estado do cliente mudou; recarregue e tente de novo',
+        )
+      }
+      return toCustomer(row)
+    },
+  )
+
+  typed.post(
+    '/v1/customers/:id/approval',
+    {
+      onRequest: app.authenticate,
+      schema: {
+        tags: ['customers'],
+        summary: 'Aprova uma prospecção da Equipe (Coordenador)',
+        description:
+          'Passa a prospecção de pending_approval para active, gravando quem aprovou e quando (RF09, RN04). Só vale para prospecção com aprovação pendente; outro estado responde 409 TRANSICAO_INVALIDA.',
+        security,
+        params,
+        response: {
+          200: customerSchema,
+          401: problemaSchema,
+          403: problemaSchema,
+          404: problemaSchema,
+          409: problemaSchema,
+          422: problemaSchema,
+        },
+      },
+    },
+    async (request) => {
+      const current = await findOwned(request.user, request.params.id)
+      if (current.origin !== 'prospect' || current.status !== 'pending_approval') {
+        throw new ApiError(
+          409,
+          'TRANSICAO_INVALIDA',
+          'Só prospecção com aprovação pendente pode ser aprovada',
+        )
+      }
+      const now = new Date()
+      const [row] = await app.db
+        .update(customers)
+        .set({
+          status: 'active',
+          approvedById: request.user.id,
+          approvedAt: now,
+          updatedAt: now,
+        })
+        .where(and(eq(customers.id, current.id), eq(customers.status, 'pending_approval')))
+        .returning()
+      if (!row) {
+        throw new ApiError(
+          409,
+          'TRANSICAO_INVALIDA',
+          'O estado do cliente mudou; recarregue e tente de novo',
+        )
+      }
+      return toCustomer(row)
+    },
+  )
+
+  typed.post(
+    '/v1/customers/:id/rejection',
+    {
+      onRequest: app.authenticate,
+      schema: {
+        tags: ['customers'],
+        summary: 'Rejeita uma prospecção da Equipe com motivo (Coordenador)',
+        description:
+          'Passa a prospecção de pending_approval para rejected, gravando o motivo no histórico (RF09, RN04). Só vale para prospecção com aprovação pendente; outro estado responde 409 TRANSICAO_INVALIDA.',
+        security,
+        params,
+        body: customerRejectionSchema,
+        response: {
+          200: customerSchema,
+          401: problemaSchema,
+          403: problemaSchema,
+          404: problemaSchema,
+          409: problemaSchema,
+          422: problemaSchema,
+        },
+      },
+    },
+    async (request) => {
+      const current = await findOwned(request.user, request.params.id)
+      if (current.origin !== 'prospect' || current.status !== 'pending_approval') {
+        throw new ApiError(
+          409,
+          'TRANSICAO_INVALIDA',
+          'Só prospecção com aprovação pendente pode ser rejeitada',
+        )
+      }
+      const now = new Date()
+      const [row] = await app.db
+        .update(customers)
+        .set({
+          status: 'rejected',
+          rejectionReason: request.body.reason,
+          updatedAt: now,
+        })
+        .where(and(eq(customers.id, current.id), eq(customers.status, 'pending_approval')))
         .returning()
       if (!row) {
         throw new ApiError(

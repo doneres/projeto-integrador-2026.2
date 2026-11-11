@@ -4,6 +4,7 @@ import {
   createRouteBodySchema,
   customerFiltersSchema,
   customerInputSchema,
+  customerRejectionSchema,
   customerStatusChangeSchema,
   type DashboardSummary,
   dashboardFiltersSchema,
@@ -367,6 +368,69 @@ export const handlers = [
       })
     }
     const atualizado: Customer = { ...atual, status: corpo.data.status, updatedAt: agora() }
+    clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.post('/v1/customers/:id/approval', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const atual = daEquipe(usuario).find((c) => c.id === String(params.id))
+    if (!atual) {
+      return naoEncontrado()
+    }
+    if (atual.origin !== 'prospect' || atual.status !== 'pending_approval') {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Transição inválida', {
+        detail: 'Só prospecção com aprovação pendente pode ser aprovada.',
+      })
+    }
+    const agoraIso = agora()
+    const atualizado: Customer = {
+      ...atual,
+      status: 'active',
+      approvedById: usuario.id,
+      approvedAt: agoraIso,
+      updatedAt: agoraIso,
+    }
+    clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.post('/v1/customers/:id/rejection', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const atual = daEquipe(usuario).find((c) => c.id === String(params.id))
+    if (!atual) {
+      return naoEncontrado()
+    }
+    const corpo = customerRejectionSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (atual.origin !== 'prospect' || atual.status !== 'pending_approval') {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Transição inválida', {
+        detail: 'Só prospecção com aprovação pendente pode ser rejeitada.',
+      })
+    }
+    const agoraIso = agora()
+    const atualizado: Customer = {
+      ...atual,
+      status: 'rejected',
+      rejectionReason: corpo.data.reason,
+      updatedAt: agoraIso,
+    }
     clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
     return HttpResponse.json(atualizado)
   }),
