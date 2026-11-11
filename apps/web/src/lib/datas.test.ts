@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatarData, formatarHora, hojeEmSaoPaulo } from './datas'
+import { formatarData, formatarHora, formatarMes, hojeEmSaoPaulo } from './datas'
 
 describe('hojeEmSaoPaulo', () => {
   it('usa o dia de São Paulo, não o de UTC', () => {
@@ -18,5 +18,11 @@ describe('formatarData', () => {
 describe('formatarHora', () => {
   it('converte o instante UTC para a hora de São Paulo', () => {
     expect(formatarHora('2026-11-06T13:05:00Z')).toBe('10:05')
+  })
+})
+
+describe('formatarMes', () => {
+  it('mostra o mês civil por extenso em português', () => {
+    expect(formatarMes('2026-11')).toBe('novembro de 2026')
   })
 })

@@ -1,5 +1,6 @@
 export * from './comum'
 export * from './customer'
+export * from './dashboard'
 export * from './documento'
 export * from './fields'
 export * from './health'

@@ -55,6 +55,7 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | GET | `/v1/routes/{id}` | | 200 `routeDetailSchema` · 403 · 404 | na API |
 | GET | `/v1/routes` | `routeFiltersSchema` (query) | 200 `pageOf(routeSchema)` · 403 | na API |
 | POST | `/v1/routes` | `createRouteBodySchema` | 201 `routeSchema` · 409 · 422 | contrato |
+| GET | `/v1/dashboard` | `dashboardFiltersSchema` (query: `date`) | 200 `dashboardSummarySchema` · 403 | contrato |
 | POST | `/v1/visits/{id}/check-in` | `checkInBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
 | POST | `/v1/visits/{id}/check-out` | `checkOutBodySchema` | 200 `visitSchema` · 404 · 422 | contrato |
 
@@ -85,6 +86,7 @@ O contrato usa só nomes em inglês (ADR 0001), conforme o [modelo de dados](../
 | Usuário e login | `user.ts`: `roleSchema`, `PANEL_ROLES`, `userSchema`, `loginBodySchema`, `sessionSchema` |
 | Cliente | `customer.ts`: `customerSchema`, `customerInputSchema`, `customerStatusChangeSchema`, `customerRejectionSchema`, `customerFiltersSchema` |
 | Rota | `route.ts`: `routeSchema`, `createRouteBodySchema`, `routeDetailSchema`, `routeFiltersSchema` |
+| Dashboard | `dashboard.ts`: `dashboardFiltersSchema`, `dashboardSellerVisitsSchema`, `dashboardSummarySchema` |
 | Visita | `visit.ts`: `visitSchema`, `checkInBodySchema`, `checkOutBodySchema`, `visitStatusOf` (estado derivado) |
 | Paginação | `pagination.ts`: `paginationSchema` (`?page&perPage`), `pageOf` (`{ items, total, page, perPage }`) |
 

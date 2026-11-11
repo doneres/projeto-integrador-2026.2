@@ -1,8 +1,12 @@
-import { customerSchema, routeSchema, visitSchema } from '@axis/contracts'
+import { customerSchema, routeSchema, userSchema, visitSchema } from '@axis/contracts'
 import { describe, expect, it } from 'vitest'
-import { clientesMock, rotasMock, visitasMock } from './data'
+import { clientesMock, rotasMock, usuariosMock, visitasMock } from './data'
 
 describe('dados da API simulada', () => {
+  it.each(usuariosMock)('o usuário $name segue o contrato', (usuario) => {
+    expect(userSchema.safeParse(usuario).success).toBe(true)
+  })
+
   it.each(clientesMock)('o cliente $tradeName segue o contrato', (cliente) => {
     expect(customerSchema.safeParse(cliente).success).toBe(true)
   })

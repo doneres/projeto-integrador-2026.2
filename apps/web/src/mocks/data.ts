@@ -31,6 +31,38 @@ export const usuariosMock: User[] = [
     role: 'seller',
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
   },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a4',
+    name: 'Carlos Modelo',
+    email: 'coordenador.b@axis.example',
+    registration: '1002',
+    role: 'coordinator',
+    coordinatorId: null,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a5',
+    name: 'Lia Modelo',
+    email: 'vendedor.b1@axis.example',
+    registration: '2004',
+    role: 'seller',
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a4',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a6',
+    name: 'Diana Exemplo',
+    email: 'diretor@axis.example',
+    registration: '3001',
+    role: 'director',
+    coordinatorId: null,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a7',
+    name: 'Alice Exemplo',
+    email: 'administrador@axis.example',
+    registration: '4001',
+    role: 'administrator',
+    coordinatorId: null,
+  },
 ]
 
 // Dados fictícios para desenvolvimento. Não usar dados reais de clientes aqui.
@@ -170,6 +202,32 @@ export const clientesMock: Customer[] = [
     createdAt: '2026-10-15T12:00:00Z',
     updatedAt: '2026-10-15T12:00:00Z',
   },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000006',
+    legalName: 'Empório Modelo Oeste Ltda',
+    tradeName: 'Empório Modelo Oeste',
+    document: '11222333000181',
+    phone: '62966660006',
+    contactName: 'Roberto (sócio)',
+    zipCode: '74110000',
+    street: 'Avenida Oeste',
+    number: '500',
+    complement: null,
+    district: 'Setor Oeste',
+    city: 'Goiânia',
+    state: 'GO',
+    latitude: -16.683,
+    longitude: -49.27,
+    origin: 'portfolio',
+    status: 'active',
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a4',
+    createdById: '0192f4a0-0000-7000-8000-0000000000a4',
+    approvedById: null,
+    approvedAt: null,
+    rejectionReason: null,
+    createdAt: '2026-10-16T12:00:00Z',
+    updatedAt: '2026-10-16T12:00:00Z',
+  },
 ]
 
 // Rotas e Visitas fictícias, relativas ao dia de hoje para a tela sempre ter o que mostrar.
@@ -178,17 +236,20 @@ const HOJE = hojeEmSaoPaulo()
 const ONTEM = new Date(Date.parse(`${HOJE}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 const BRUNO = VENDEDOR
 const DIEGO = '0192f4a0-0000-7000-8000-0000000000a3'
+const COORDENADOR_B = '0192f4a0-0000-7000-8000-0000000000a4'
+const LIA = '0192f4a0-0000-7000-8000-0000000000a5'
 const cliente = (n: number) => `0192f4a0-0000-7000-8000-00000000000${n}`
 
 export const rotasMock: Route[] = [
   rota('0192f4a0-0000-7000-8000-000000000b01', BRUNO, HOJE),
   rota('0192f4a0-0000-7000-8000-000000000b02', DIEGO, HOJE),
   rota('0192f4a0-0000-7000-8000-000000000b03', BRUNO, ONTEM),
+  rota('0192f4a0-0000-7000-8000-000000000b04', LIA, HOJE, COORDENADOR_B),
 ]
 
-function rota(id: string, sellerId: string, date: string): Route {
+function rota(id: string, sellerId: string, date: string, createdById = COORDENADORA): Route {
   const instante = `${date}T10:00:00Z`
-  return { id, sellerId, date, createdById: COORDENADORA, createdAt: instante, updatedAt: instante }
+  return { id, sellerId, date, createdById, createdAt: instante, updatedAt: instante }
 }
 
 type Andamento =
@@ -259,4 +320,45 @@ export const visitasMock: Visit[] = [
   visita(rotasMock[1].id, HOJE, 2, 2, { estado: 'pendente' }),
   visita(rotasMock[2].id, ONTEM, 1, 1, { estado: 'concluida' }),
   visita(rotasMock[2].id, ONTEM, 4, 2, { estado: 'concluida' }),
+  visita(rotasMock[3].id, HOJE, 6, 1, { estado: 'concluida' }),
+]
+
+/** Pedido simulado no MSW para o cálculo de faturamento do período no dashboard (#40). */
+export type PedidoSimulado = {
+  id: string
+  visitId: string
+  sellerId: string
+  totalCents: number
+  occurredAt: string
+}
+
+export const pedidosMock: PedidoSimulado[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d01',
+    visitId: '0192f4a0-0000-7000-8000-000000000c11',
+    sellerId: BRUNO,
+    totalCents: 64500,
+    occurredAt: `${HOJE}T11:30:00Z`,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d02',
+    visitId: '0192f4a0-0000-7000-8000-000000000c31',
+    sellerId: BRUNO,
+    totalCents: 120000,
+    occurredAt: `${ONTEM}T11:30:00Z`,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d03',
+    visitId: '0192f4a0-0000-7000-8000-000000000c32',
+    sellerId: BRUNO,
+    totalCents: 48000,
+    occurredAt: `${ONTEM}T12:30:00Z`,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d04',
+    visitId: '0192f4a0-0000-7000-8000-000000000c41',
+    sellerId: LIA,
+    totalCents: 95000,
+    occurredAt: `${HOJE}T11:35:00Z`,
+  },
 ]
