@@ -10,10 +10,19 @@ import {
   dashboardFiltersSchema,
   type ErroDeCampo,
   errosDeValidacao,
+  type Loan,
+  type LoanDetail,
+  loanEndSchema,
+  loanFiltersSchema,
+  loanInputSchema,
   loginBodySchema,
   normalizarDocumento,
   type Page,
+  type PosMaterial,
   type Product,
+  posMaterialFiltersSchema,
+  posMaterialInputSchema,
+  posMaterialStatusChangeSchema,
   productFiltersSchema,
   productInputSchema,
   productStatusChangeSchema,
@@ -30,6 +39,8 @@ import { delay, HttpResponse, http } from 'msw'
 import { hojeEmSaoPaulo } from '../lib/datas'
 import {
   clientesMock,
+  comodatosMock,
+  materiaisMock,
   type PedidoSimulado,
   pedidosMock,
   produtosMock,
@@ -47,6 +58,8 @@ let clientes: Customer[] = structuredClone(clientesMock)
 let rotas: Route[] = structuredClone(rotasMock)
 let visitas: Visit[] = structuredClone(visitasMock)
 let produtos: Product[] = structuredClone(produtosMock)
+let materiais: PosMaterial[] = structuredClone(materiaisMock)
+let comodatos: Loan[] = structuredClone(comodatosMock)
 const pedidos: PedidoSimulado[] = structuredClone(pedidosMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
@@ -169,6 +182,13 @@ function detalhe(rota: Route): RouteDetail {
       return { ...v, status: visitStatusOf(v), customer: cliente }
     }),
   }
+}
+
+/** Comodato com material e cliente associados. */
+function detalheComodato(comodato: Loan): LoanDetail {
+  const material = materiais.find((m) => m.id === comodato.materialId)
+  const customer = clientes.find((c) => c.id === comodato.customerId)
+  return { ...comodato, material, customer }
 }
 
 const rotaNaoEncontrada = () =>
@@ -739,5 +759,308 @@ export const handlers = [
     }
     produtos = produtos.map((p) => (p.id === atual.id ? atualizado : p))
     return HttpResponse.json(atualizado)
+  }),
+
+  // --- Materiais de PDV (RF16) ---
+
+  http.get('/v1/pos-materials', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const url = new URL(request.url)
+    const query = Object.fromEntries(url.searchParams)
+    const parse = posMaterialFiltersSchema.safeParse(query)
+    if (!parse.success) {
+      return validacao(errosDeValidacao(parse.error))
+    }
+    const filtros = parse.data
+    const termo = filtros.search?.toLowerCase()
+    const direcao = filtros.order === 'desc' ? -1 : 1
+    const filtrados = materiais
+      .filter(
+        (m) =>
+          (!termo ||
+            m.name.toLowerCase().includes(termo) ||
+            m.category.toLowerCase().includes(termo)) &&
+          (!filtros.category || m.category.toLowerCase() === filtros.category.toLowerCase()) &&
+          (filtros.active === undefined || m.active === filtros.active),
+      )
+      .sort(
+        (a, b) =>
+          direcao * String(a[filtros.sortBy]).localeCompare(String(b[filtros.sortBy]), 'pt-BR') ||
+          a.id.localeCompare(b.id),
+      )
+    return HttpResponse.json(pagina(filtrados, filtros.page, filtros.perPage))
+  }),
+
+  http.get('/v1/pos-materials/:id', async ({ request, params }) => {
+    await delay(150)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const encontrado = materiais.find((m) => m.id === String(params.id))
+    if (!encontrado) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    return HttpResponse.json(encontrado)
+  }),
+
+  http.post('/v1/pos-materials', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = posMaterialInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const instante = agora()
+    const novo: PosMaterial = {
+      id: crypto.randomUUID(),
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      active: true,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    materiais = [...materiais, novo]
+    return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.put('/v1/pos-materials/:id', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = materiais.find((m) => m.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    const corpo = posMaterialInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const atualizado: PosMaterial = {
+      ...atual,
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      updatedAt: agora(),
+    }
+    materiais = materiais.map((m) => (m.id === atual.id ? atualizado : m))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.patch('/v1/pos-materials/:id/status', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = materiais.find((m) => m.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    const corpo = posMaterialStatusChangeSchema.safeParse(
+      await request.json().catch(() => undefined),
+    )
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const atualizado: PosMaterial = {
+      ...atual,
+      active: corpo.data.active,
+      updatedAt: agora(),
+    }
+    materiais = materiais.map((m) => (m.id === atual.id ? atualizado : m))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.delete('/v1/pos-materials/:id', async ({ request, params }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = materiais.find((m) => m.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    // Regra do modelo de dados: exclusão real permitida APENAS sem comodatos ativos vinculados.
+    const temComodatoAtivo = comodatos.some((c) => c.materialId === atual.id && c.endedAt === null)
+    if (temComodatoAtivo) {
+      return problema(409, 'MATERIAL_EM_USO', 'Material em uso', {
+        detail:
+          'Não é possível excluir material com comodatos ativos vinculados. Encerre os comodatos antes de excluir.',
+      })
+    }
+    materiais = materiais.filter((m) => m.id !== atual.id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // --- Comodatos por Cliente (RF17) ---
+
+  http.get('/v1/loans', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (
+      usuario.role !== 'administrator' &&
+      usuario.role !== 'coordinator' &&
+      usuario.role !== 'director'
+    ) {
+      return semPermissao()
+    }
+    const url = new URL(request.url)
+    const query = Object.fromEntries(url.searchParams)
+    const parse = loanFiltersSchema.safeParse(query)
+    if (!parse.success) {
+      return validacao(errosDeValidacao(parse.error))
+    }
+    const filtros = parse.data
+    // Escopo por perfil: Administrador e Diretor veem todos; Coordenador vê apenas comodatos dos clientes da sua equipe.
+    let base = comodatos
+    if (usuario.role === 'coordinator') {
+      const idsClientesEquipe = new Set(daEquipe(usuario).map((c) => c.id))
+      base = base.filter((c) => idsClientesEquipe.has(c.customerId))
+    }
+    const enriquecidos = base.map(detalheComodato)
+    const termo = filtros.search?.toLowerCase()
+    const direcao = filtros.order === 'desc' ? -1 : 1
+    const filtrados = enriquecidos
+      .filter(
+        (l) =>
+          (!filtros.customerId || l.customerId === filtros.customerId) &&
+          (!filtros.materialId || l.materialId === filtros.materialId) &&
+          (filtros.activeOnly === undefined || (filtros.activeOnly ? l.endedAt === null : true)) &&
+          (!termo ||
+            l.serialNumber.toLowerCase().includes(termo) ||
+            l.customer?.tradeName.toLowerCase().includes(termo) ||
+            l.customer?.legalName.toLowerCase().includes(termo) ||
+            l.material?.name.toLowerCase().includes(termo)),
+      )
+      .sort(
+        (a, b) =>
+          direcao *
+            String(a[filtros.sortBy] ?? '').localeCompare(
+              String(b[filtros.sortBy] ?? ''),
+              'pt-BR',
+            ) || a.id.localeCompare(b.id),
+      )
+    return HttpResponse.json(pagina(filtrados, filtros.page, filtros.perPage))
+  }),
+
+  http.post('/v1/loans', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = loanInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const material = materiais.find((m) => m.id === corpo.data.materialId)
+    if (!material) {
+      return validacao([{ campo: 'materialId', mensagem: 'Material não encontrado no catálogo' }])
+    }
+    if (!material.active) {
+      return validacao([
+        { campo: 'materialId', mensagem: 'Não é possível vincular material inativo' },
+      ])
+    }
+    const cliente = clientes.find((c) => c.id === corpo.data.customerId)
+    if (!cliente) {
+      return validacao([{ campo: 'customerId', mensagem: 'Cliente não encontrado' }])
+    }
+    if (cliente.status !== 'active') {
+      return validacao([
+        { campo: 'customerId', mensagem: 'O cliente precisa estar ativo para receber comodato' },
+      ])
+    }
+    const serialNormalizado = corpo.data.serialNumber.trim()
+    const serialRepetidoAtivo = comodatos.some(
+      (c) =>
+        c.serialNumber.trim().toLowerCase() === serialNormalizado.toLowerCase() &&
+        c.endedAt === null,
+    )
+    if (serialRepetidoAtivo) {
+      return problema(409, 'NUMERO_SERIE_EM_USO', 'Patrimônio já em uso', {
+        detail: 'Já existe um comodato ativo com este patrimônio ou número de série.',
+      })
+    }
+    const instante = agora()
+    const novo: Loan = {
+      id: crypto.randomUUID(),
+      materialId: corpo.data.materialId,
+      customerId: corpo.data.customerId,
+      serialNumber: serialNormalizado,
+      installedAt: corpo.data.installedAt,
+      endedAt: null,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    comodatos = [...comodatos, novo]
+    return HttpResponse.json(detalheComodato(novo), { status: 201 })
+  }),
+
+  http.patch('/v1/loans/:id/end', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = comodatos.find((c) => c.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Comodato não encontrado')
+    }
+    if (atual.endedAt !== null) {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Comodato já encerrado', {
+        detail: 'Este comodato já foi encerrado anteriormente.',
+      })
+    }
+    const corpo = loanEndSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (corpo.data.endedAt < atual.installedAt) {
+      return validacao([
+        {
+          campo: 'endedAt',
+          mensagem: 'A data de encerramento não pode ser anterior à data de instalação.',
+        },
+      ])
+    }
+    const atualizado: Loan = {
+      ...atual,
+      endedAt: corpo.data.endedAt,
+      updatedAt: agora(),
+    }
+    comodatos = comodatos.map((c) => (c.id === atual.id ? atualizado : c))
+    return HttpResponse.json(detalheComodato(atualizado))
   }),
 ]

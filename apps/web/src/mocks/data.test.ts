@@ -1,12 +1,22 @@
 import {
   customerSchema,
+  loanSchema,
+  posMaterialSchema,
   productSchema,
   routeSchema,
   userSchema,
   visitSchema,
 } from '@axis/contracts'
 import { describe, expect, it } from 'vitest'
-import { clientesMock, produtosMock, rotasMock, usuariosMock, visitasMock } from './data'
+import {
+  clientesMock,
+  comodatosMock,
+  materiaisMock,
+  produtosMock,
+  rotasMock,
+  usuariosMock,
+  visitasMock,
+} from './data'
 
 describe('dados da API simulada', () => {
   it.each(usuariosMock)('o usuário $name segue o contrato', (usuario) => {
@@ -27,5 +37,13 @@ describe('dados da API simulada', () => {
 
   it.each(produtosMock)('o produto $name segue o contrato', (produto) => {
     expect(productSchema.safeParse(produto).success).toBe(true)
+  })
+
+  it.each(materiaisMock)('o material de PDV $name segue o contrato', (material) => {
+    expect(posMaterialSchema.safeParse(material).success).toBe(true)
+  })
+
+  it.each(comodatosMock)('o comodato $serialNumber segue o contrato', (comodato) => {
+    expect(loanSchema.safeParse(comodato).success).toBe(true)
   })
 })

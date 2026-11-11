@@ -1,4 +1,4 @@
-import type { Customer, Product, Route, User, Visit } from '@axis/contracts'
+import type { Customer, Loan, PosMaterial, Product, Route, User, Visit } from '@axis/contracts'
 import { hojeEmSaoPaulo } from '../lib/datas'
 
 /** Senha fictícia aceita pela API simulada para os usuários de teste. Só existe no MSW. */
@@ -537,5 +537,137 @@ export const produtosMock: Product[] = [
     active: false,
     createdAt: '2026-10-04T10:00:00Z',
     updatedAt: '2026-10-10T14:00:00Z',
+  },
+]
+
+// Catálogo de materiais de ponto de venda (RF16).
+export const materiaisMock: PosMaterial[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f01',
+    name: 'Geladeira Expositora Slim 1 Porta',
+    category: 'Geladeiras',
+    active: true,
+    createdAt: '2026-10-01T10:00:00Z',
+    updatedAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f02',
+    name: 'Geladeira Expositora Dupla 2 Portas',
+    category: 'Geladeiras',
+    active: true,
+    createdAt: '2026-10-01T10:00:00Z',
+    updatedAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f03',
+    name: 'Freezer Horizontal 300L',
+    category: 'Freezers',
+    active: true,
+    createdAt: '2026-10-02T10:00:00Z',
+    updatedAt: '2026-10-02T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f04',
+    name: 'Display de Chão Metálico 4 Bandejas',
+    category: 'Displays',
+    active: true,
+    createdAt: '2026-10-03T10:00:00Z',
+    updatedAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f05',
+    name: 'Banner Roll-up Promocional 2x1m',
+    category: 'Banners',
+    active: true,
+    createdAt: '2026-10-03T10:00:00Z',
+    updatedAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f06',
+    name: 'Totem Iluminado LED',
+    category: 'Totens',
+    active: false,
+    createdAt: '2026-10-04T10:00:00Z',
+    updatedAt: '2026-10-10T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f07',
+    name: 'Faixa de Gôndola Acrílica 1m',
+    category: 'Faixas de Gôndola',
+    active: true,
+    createdAt: '2026-10-04T10:00:00Z',
+    updatedAt: '2026-10-04T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f08',
+    name: 'Pontalete Promocional Descartável',
+    category: 'Displays',
+    active: true,
+    createdAt: '2026-10-05T10:00:00Z',
+    updatedAt: '2026-10-05T10:00:00Z',
+  },
+]
+
+// Comodatos de materiais por cliente (RF17).
+export const comodatosMock: Loan[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c01',
+    materialId: '0192f4a0-0000-7000-8000-000000000f01',
+    customerId: '0192f4a0-0000-7000-8000-000000000001',
+    serialNumber: 'GEL-SLIM-0012',
+    installedAt: '2026-06-10',
+    endedAt: null,
+    createdAt: '2026-06-10T14:00:00Z',
+    updatedAt: '2026-06-10T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c02',
+    materialId: '0192f4a0-0000-7000-8000-000000000f02',
+    customerId: '0192f4a0-0000-7000-8000-000000000002',
+    serialNumber: 'GEL-DUP-0045',
+    installedAt: '2026-07-01',
+    endedAt: null,
+    createdAt: '2026-07-01T14:00:00Z',
+    updatedAt: '2026-07-01T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c03',
+    materialId: '0192f4a0-0000-7000-8000-000000000f03',
+    customerId: '0192f4a0-0000-7000-8000-000000000003',
+    serialNumber: 'FRZ-300-0089',
+    installedAt: '2026-08-15',
+    endedAt: null,
+    createdAt: '2026-08-15T14:00:00Z',
+    updatedAt: '2026-08-15T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c04',
+    materialId: '0192f4a0-0000-7000-8000-000000000f04',
+    customerId: '0192f4a0-0000-7000-8000-000000000005',
+    serialNumber: 'DIS-MET-0104',
+    installedAt: '2026-09-01',
+    endedAt: null,
+    createdAt: '2026-09-01T14:00:00Z',
+    updatedAt: '2026-09-01T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c05',
+    materialId: '0192f4a0-0000-7000-8000-000000000f07',
+    customerId: '0192f4a0-0000-7000-8000-000000000001',
+    serialNumber: 'FXG-2026-0001',
+    installedAt: '2026-05-10',
+    endedAt: '2026-09-30',
+    createdAt: '2026-05-10T14:00:00Z',
+    updatedAt: '2026-09-30T17:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c06',
+    materialId: '0192f4a0-0000-7000-8000-000000000f05',
+    customerId: '0192f4a0-0000-7000-8000-000000000006',
+    serialNumber: 'BAN-2026-0033',
+    installedAt: '2026-10-18',
+    endedAt: null,
+    createdAt: '2026-10-18T14:00:00Z',
+    updatedAt: '2026-10-18T14:00:00Z',
   },
 ]

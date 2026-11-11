@@ -57,6 +57,15 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | POST | `/v1/products` | `productInputSchema` | 201 `productSchema` · 403 · 409 `SKU_JA_CADASTRADO` · 422 `VALIDACAO` | contrato |
 | PUT | `/v1/products/{id}` | `productInputSchema` | 200 `productSchema` · 403 · 404 · 409 `SKU_JA_CADASTRADO` · 422 | contrato |
 | PATCH | `/v1/products/{id}/status` | `productStatusChangeSchema` | 200 `productSchema` · 403 · 404 · 422 | contrato |
+| GET | `/v1/pos-materials` | `posMaterialFiltersSchema` (query: busca, categoria, active, ordenação) | 200 `pageOf(posMaterialSchema)` · 401 | contrato |
+| GET | `/v1/pos-materials/{id}` | | 200 `posMaterialSchema` · 404 `NAO_ENCONTRADO` | contrato |
+| POST | `/v1/pos-materials` | `posMaterialInputSchema` | 201 `posMaterialSchema` · 403 · 422 `VALIDACAO` | contrato |
+| PUT | `/v1/pos-materials/{id}` | `posMaterialInputSchema` | 200 `posMaterialSchema` · 403 · 404 · 422 | contrato |
+| PATCH | `/v1/pos-materials/{id}/status` | `posMaterialStatusChangeSchema` | 200 `posMaterialSchema` · 403 · 404 · 422 | contrato |
+| DELETE | `/v1/pos-materials/{id}` | | 204 · 403 · 404 · 409 `MATERIAL_EM_USO` | contrato |
+| GET | `/v1/loans` | `loanFiltersSchema` (query: cliente, material, ativos, busca) | 200 `pageOf(loanDetailSchema)` · 401 · 403 | contrato |
+| POST | `/v1/loans` | `loanInputSchema` | 201 `loanDetailSchema` · 403 · 404 · 422 `VALIDACAO` | contrato |
+| PATCH | `/v1/loans/{id}/end` | `loanEndSchema` | 200 `loanDetailSchema` · 403 · 404 · 409 `TRANSICAO_INVALIDA` · 422 | contrato |
 | GET | `/v1/routes/today` | | 200 `routeDetailSchema` · 403 · 404 `SEM_ROTA_HOJE` | na API |
 | GET | `/v1/routes/{id}` | | 200 `routeDetailSchema` · 403 · 404 | na API |
 | GET | `/v1/routes` | `routeFiltersSchema` (query) | 200 `pageOf(routeSchema)` · 403 | na API |
@@ -80,6 +89,7 @@ Os caminhos desta tabela são a proposta do contrato; cada ticket de API os conf
 | `MUITAS_TENTATIVAS` | 429 | Muitas tentativas de login (certas ou erradas) do mesmo endereço em pouco tempo |
 | `ERRO_INTERNO` | 500 | Falha inesperada; a mensagem interna não é exposta |
 | `DOCUMENTO_JA_CADASTRADO` | 409 | Já existe cliente com o mesmo CPF/CNPJ |
+| `MATERIAL_EM_USO` | 409 | Não é possível excluir material que possui comodatos ativos vinculados |
 | `TRANSICAO_INVALIDA` | 409 | Mudança de estado que o cliente não admite (ex.: inativar prospecção pendente) |
 | `SEM_ROTA_HOJE` | 404 | O Vendedor não tem rota montada para o dia |
 
@@ -92,6 +102,7 @@ O contrato usa só nomes em inglês (ADR 0001), conforme o [modelo de dados](../
 | Usuário e login | `user.ts`: `roleSchema`, `PANEL_ROLES`, `userSchema`, `loginBodySchema`, `sessionSchema` |
 | Cliente | `customer.ts`: `customerSchema`, `customerInputSchema`, `customerStatusChangeSchema`, `customerRejectionSchema`, `customerFiltersSchema` |
 | Produto | `product.ts`: `productSchema`, `productInputSchema`, `productStatusChangeSchema`, `productSortFieldSchema`, `productFiltersSchema` |
+| Materiais de PDV e Comodato | `pos-material.ts`: `posMaterialSchema`, `posMaterialInputSchema`, `posMaterialStatusChangeSchema`, `posMaterialFiltersSchema`, `loanSchema`, `loanInputSchema`, `loanEndSchema`, `loanDetailSchema`, `loanFiltersSchema`, `isLoanActive` |
 | Rota | `route.ts`: `routeSchema`, `createRouteBodySchema`, `routeDetailSchema`, `routeFiltersSchema` |
 | Dashboard | `dashboard.ts`: `dashboardFiltersSchema`, `dashboardSellerVisitsSchema`, `dashboardSummarySchema` |
 | Visita | `visit.ts`: `visitSchema`, `checkInBodySchema`, `checkOutBodySchema`, `visitStatusOf` (estado derivado) |
