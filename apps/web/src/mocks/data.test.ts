@@ -1,5 +1,6 @@
 import {
   customerSchema,
+  goalSchema,
   loanSchema,
   posMaterialSchema,
   productSchema,
@@ -12,6 +13,7 @@ import {
   clientesMock,
   comodatosMock,
   materiaisMock,
+  metasMock,
   produtosMock,
   rotasMock,
   usuariosMock,
@@ -45,5 +47,9 @@ describe('dados da API simulada', () => {
 
   it.each(comodatosMock)('o comodato $serialNumber segue o contrato', (comodato) => {
     expect(loanSchema.safeParse(comodato).success).toBe(true)
+  })
+
+  it.each(metasMock)('a meta mensal de $sellerId segue o contrato', (meta) => {
+    expect(goalSchema.safeParse(meta).success).toBe(true)
   })
 })
