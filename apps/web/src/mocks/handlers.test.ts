@@ -12,6 +12,7 @@ import {
   sellerScoreSummarySchema,
   sessionSchema,
   userSchema,
+  userWithCoordinatorSchema,
 } from '@axis/contracts'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -614,5 +615,208 @@ describe('API simulada segue o contrato', () => {
     if (atualizado.corpo.score !== null) {
       expect(atualizado.corpo.score).toBeLessThanOrEqual(100)
     }
+  })
+
+  it('permite gestão completa de usuários, perfis e redefinição de senha pelo Administrador (#45)', {
+    timeout: 15000,
+  }, async () => {
+    const adminHeaders = await entrar('administrador@axis.example')
+    const coordenadorHeaders = await entrar('gestor@axis.example')
+
+    // Coordenador não pode cadastrar usuários (403)
+    const negadoPost = await chamar(problemaSchema, '/v1/users', {
+      method: 'POST',
+      headers: coordenadorHeaders,
+      body: JSON.stringify({
+        name: 'Tentativa Vendedor',
+        email: 'tentativa@axis.example',
+        registration: '9999',
+        role: 'seller',
+      }),
+    })
+    expect(negadoPost.status).toBe(403)
+
+    // Admin lista usuários com filtros
+    const listagem = await chamar(
+      pageOf(userWithCoordinatorSchema),
+      '/v1/users?sortBy=name&order=asc',
+      {
+        headers: adminHeaders,
+      },
+    )
+    expect(listagem.status).toBe(200)
+    expect(listagem.corpo.items.length).toBeGreaterThan(0)
+
+    // Vendedor precisa de coordenador (422)
+    const validacaoSemCoord = await chamar(problemaSchema, '/v1/users', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Vendedor Sem Coordenador',
+        email: 'semcoord@axis.example',
+        registration: '8881',
+        role: 'seller',
+      }),
+    })
+    expect(validacaoSemCoord.status).toBe(422)
+
+    // Cadastro de novo vendedor com sucesso
+    const mariaId = '0192f4a0-0000-7000-8000-0000000000a1'
+    const criado = await chamar(userSchema, '/v1/users', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Novo Vendedor Cadastrado',
+        email: 'novovendedor@axis.example',
+        registration: '8882',
+        role: 'seller',
+        coordinatorId: mariaId,
+        password: 'senha-inicial-123',
+      }),
+    })
+    expect(criado.status).toBe(201)
+    expect(criado.corpo.name).toBe('Novo Vendedor Cadastrado')
+    expect(criado.corpo.role).toBe('seller')
+    expect(criado.corpo.coordinatorId).toBe(mariaId)
+    expect(criado.corpo.active).toBe(true)
+
+    // Login com a senha cadastrada
+    const loginNovo = await chamar(sessionSchema, '/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        identifier: 'novovendedor@axis.example',
+        password: 'senha-inicial-123',
+      }),
+    })
+    expect(loginNovo.status).toBe(200)
+
+    // E-mail duplicado gera 409
+    const emailDup = await chamar(problemaSchema, '/v1/users', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Outro Usuario',
+        email: 'novovendedor@axis.example',
+        registration: '8883',
+        role: 'administrator',
+      }),
+    })
+    expect(emailDup.status).toBe(409)
+    expect(emailDup.corpo.codigo).toBe('EMAIL_JA_CADASTRADO')
+
+    // Matrícula duplicada gera 409
+    const matDup = await chamar(problemaSchema, '/v1/users', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Outro Usuario 2',
+        email: 'outro2@axis.example',
+        registration: '8882',
+        role: 'administrator',
+      }),
+    })
+    expect(matDup.status).toBe(409)
+    expect(matDup.corpo.codigo).toBe('MATRICULA_JA_CADASTRADA')
+
+    // Consulta de usuário por ID traz nome do coordenador
+    const detalheUser = await chamar(userWithCoordinatorSchema, `/v1/users/${criado.corpo.id}`, {
+      headers: adminHeaders,
+    })
+    expect(detalheUser.status).toBe(200)
+    expect(detalheUser.corpo.coordinatorName).toBe('Maria Souza')
+
+    // Edição de usuário
+    const editado = await chamar(userSchema, `/v1/users/${criado.corpo.id}`, {
+      method: 'PUT',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Novo Vendedor Atualizado',
+        email: 'novovendedor@axis.example',
+        registration: '8882',
+        role: 'seller',
+        coordinatorId: mariaId,
+      }),
+    })
+    expect(editado.status).toBe(200)
+    expect(editado.corpo.name).toBe('Novo Vendedor Atualizado')
+
+    // Coordenador com vendedores não pode mudar de perfil (409 COORDENADOR_COM_VENDEDORES)
+    const mudaPerfilCoord = await chamar(problemaSchema, `/v1/users/${mariaId}`, {
+      method: 'PUT',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Maria Souza',
+        email: 'gestor@axis.example',
+        registration: '1001',
+        role: 'director',
+      }),
+    })
+    expect(mudaPerfilCoord.status).toBe(409)
+    expect(mudaPerfilCoord.corpo.codigo).toBe('COORDENADOR_COM_VENDEDORES')
+
+    // Administrador não pode desativar a própria conta (409 NAO_PODE_DESATIVAR_A_SI_MESMO)
+    const adminId = '0192f4a0-0000-7000-8000-0000000000a7'
+    const autoDesativar = await chamar(problemaSchema, `/v1/users/${adminId}/status`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ active: false }),
+    })
+    expect(autoDesativar.status).toBe(409)
+    expect(autoDesativar.corpo.codigo).toBe('NAO_PODE_DESATIVAR_A_SI_MESMO')
+
+    // Desativação do vendedor criado
+    const desativado = await chamar(userSchema, `/v1/users/${criado.corpo.id}/status`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ active: false }),
+    })
+    expect(desativado.status).toBe(200)
+    expect(desativado.corpo.active).toBe(false)
+
+    // Login do usuário desativado é bloqueado
+    const loginBloqueado = await chamar(problemaSchema, '/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        identifier: 'novovendedor@axis.example',
+        password: 'senha-inicial-123',
+      }),
+    })
+    expect(loginBloqueado.status).toBe(401)
+    expect(loginBloqueado.corpo.codigo).toBe('CREDENCIAIS_INVALIDAS')
+
+    // Requisição subsequente com token antigo é rejeitada (401 NAO_AUTENTICADO)
+    const requisicaoBloqueada = await chamar(problemaSchema, '/v1/me', {
+      headers: { Authorization: `Bearer token-simulado-${criado.corpo.id}` },
+    })
+    expect(requisicaoBloqueada.status).toBe(401)
+    expect(requisicaoBloqueada.corpo.codigo).toBe('NAO_AUTENTICADO')
+
+    // Reativação da conta
+    const reativado = await chamar(userSchema, `/v1/users/${criado.corpo.id}/status`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ active: true }),
+    })
+    expect(reativado.status).toBe(200)
+    expect(reativado.corpo.active).toBe(true)
+
+    // Redefinição de senha pelo Administrador (RF03)
+    const respostaSenha = await fetch(`${BASE}/v1/users/${criado.corpo.id}/password-reset`, {
+      method: 'POST',
+      headers: { ...adminHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword: 'nova-senha-segura-2026' }),
+    })
+    expect(respostaSenha.status).toBe(200)
+
+    // Login com a nova senha redefinida
+    const loginNovaSenha = await chamar(sessionSchema, '/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        identifier: 'novovendedor@axis.example',
+        password: 'nova-senha-segura-2026',
+      }),
+    })
+    expect(loginNovaSenha.status).toBe(200)
+    expect(loginNovaSenha.corpo.user.id).toBe(criado.corpo.id)
   })
 })

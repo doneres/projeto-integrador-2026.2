@@ -44,6 +44,7 @@ describe('apiFetch', () => {
         registration: '1001',
         role: 'coordinator',
         coordinatorId: null,
+        active: true,
       },
     })
     await apiFetch('/v1/teste', schema)

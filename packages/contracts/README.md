@@ -45,6 +45,12 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | GET | `/health` (sem `/v1` e sem login) | | 200 `healthSchema`; não consulta o banco | na API |
 | POST | `/v1/auth/login` | `loginBodySchema` | 200 `sessionSchema` · 401 `CREDENCIAIS_INVALIDAS` · 422 `VALIDACAO` · 429 `MUITAS_TENTATIVAS` | na API |
 | GET | `/v1/me` | | 200 `userSchema` · 401 `NAO_AUTENTICADO` | na API |
+| GET | `/v1/users` | `userFiltersSchema` (query: perfil, busca, ativo, coordenador) | 200 `pageOf(userWithCoordinatorSchema)` · 403 `SEM_PERMISSAO` | contrato |
+| GET | `/v1/users/{id}` | | 200 `userWithCoordinatorSchema` · 403 · 404 `NAO_ENCONTRADO` | contrato |
+| POST | `/v1/users` | `userInputSchema` | 201 `userSchema` · 403 · 409 `EMAIL_JA_CADASTRADO` / `MATRICULA_JA_CADASTRADA` · 422 `VALIDACAO` | contrato |
+| PUT | `/v1/users/{id}` | `userUpdateInputSchema` | 200 `userSchema` · 403 · 404 · 409 · 422 | contrato |
+| PATCH | `/v1/users/{id}/status` | `userStatusChangeSchema` | 200 `userSchema` · 403 · 404 · 409 · 422 | contrato |
+| POST | `/v1/users/{id}/password-reset` | `passwordResetSchema` | 200 · 403 · 404 · 422 `VALIDACAO` | contrato |
 | GET | `/v1/customers` | `customerFiltersSchema` (query: página, busca, filtros e ordenação) | 200 `pageOf(customerSchema)` · 403 `SEM_PERMISSAO` | na API |
 | GET | `/v1/customers/{id}` | | 200 `customerSchema` · 404 `NAO_ENCONTRADO` (também fora do escopo do perfil) | na API |
 | POST | `/v1/customers` | `customerInputSchema` | 201 `customerSchema` · 403 · 409 `DOCUMENTO_JA_CADASTRADO` · 422 `VALIDACAO` | na API |
@@ -91,6 +97,9 @@ Os caminhos desta tabela são a proposta do contrato; cada ticket de API os conf
 | `MUITAS_TENTATIVAS` | 429 | Muitas tentativas de login (certas ou erradas) do mesmo endereço em pouco tempo |
 | `ERRO_INTERNO` | 500 | Falha inesperada; a mensagem interna não é exposta |
 | `DOCUMENTO_JA_CADASTRADO` | 409 | Já existe cliente com o mesmo CPF/CNPJ |
+| `EMAIL_JA_CADASTRADO` | 409 | Já existe uma conta com o mesmo e-mail |
+| `MATRICULA_JA_CADASTRADA` | 409 | Já existe uma conta com a mesma matrícula |
+| `COORDENADOR_COM_VENDEDORES` | 409 | Não é possível alterar o perfil de um coordenador que possui vendedores vinculados |
 | `MATERIAL_EM_USO` | 409 | Não é possível excluir material que possui comodatos ativos vinculados |
 | `TRANSICAO_INVALIDA` | 409 | Mudança de estado que o cliente não admite (ex.: inativar prospecção pendente) |
 | `SEM_ROTA_HOJE` | 404 | O Vendedor não tem rota montada para o dia |
