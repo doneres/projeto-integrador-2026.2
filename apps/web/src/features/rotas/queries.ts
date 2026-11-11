@@ -14,6 +14,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
+import { opcoesDeConsultaViva } from '../../lib/query-client'
 import { paraQueryString } from '../clientes/queries'
 
 const paginaDeRotasSchema = pageOf(routeSchema)
@@ -28,6 +29,7 @@ export const rotasKeys = {
 
 export function useRotas(filtros: RouteFilters) {
   return useQuery({
+    ...opcoesDeConsultaViva,
     queryKey: rotasKeys.list(filtros),
     queryFn: () => apiFetch(`/v1/routes?${paraQueryString(filtros)}`, paginaDeRotasSchema),
     placeholderData: keepPreviousData,
@@ -36,6 +38,7 @@ export function useRotas(filtros: RouteFilters) {
 
 function opcoesDaRota(id: string) {
   return {
+    ...opcoesDeConsultaViva,
     queryKey: rotasKeys.detail(id),
     queryFn: () => apiFetch(`/v1/routes/${encodeURIComponent(id)}`, routeDetailSchema),
   }
@@ -46,14 +49,15 @@ export function useRota(id: string | undefined) {
 }
 
 /**
- * Detalhe de várias rotas, para mostrar o progresso das Visitas na lista. A listagem
- * (GET /v1/routes) não traz as Visitas, então cada rota da página é buscada à parte (até 20).
+ * Detalhe de várias rotas, para mostrar o progresso das Visitas e as Flags de auditoria ao vivo
+ * na lista (#39, #62). A listagem (GET /v1/routes) não traz as Visitas, então cada rota da página
+ * é buscada à parte (até 20).
  */
 export function useDetalhesDasRotas(ids: readonly string[]) {
   return useQueries({ queries: ids.map((id) => opcoesDaRota(id)) })
 }
 
-/** Vendedores da Equipe do Coordenador (GET /v1/users?role=seller, #79). */
+/** Vendedores da Equipe do Coordenador (GET /v1/users?role=seller, #79). Cadastro não faz polling. */
 export function useVendedores() {
   return useQuery({
     queryKey: ['usuarios', 'vendedores'],

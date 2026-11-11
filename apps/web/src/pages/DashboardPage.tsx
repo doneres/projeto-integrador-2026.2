@@ -2,6 +2,7 @@ import { type DashboardFilters, dashboardFiltersSchema } from '@axis/contracts'
 import { Link, useSearchParams } from 'react-router'
 import { Botao } from '../components/ui/Botao'
 import { Campo } from '../components/ui/Campo'
+import { IndicadorDeFrescor } from '../components/ui/IndicadorDeFrescor'
 import { useDashboard } from '../features/dashboard/queries'
 import { formatarData, formatarMes, hojeEmSaoPaulo } from '../lib/datas'
 import { mensagemDeErro } from '../lib/erros'
@@ -34,7 +35,7 @@ export function DashboardPage() {
   const filtros = lerFiltros(parametros)
   const papel = sessao?.user.role
   const temAcesso = papel === 'coordinator' || papel === 'director'
-  const painel = useDashboard(filtros)
+  const painel = useDashboard(filtros, temAcesso)
 
   if (papel === 'administrator') {
     return (
@@ -78,9 +79,18 @@ export function DashboardPage() {
         />
       </div>
 
+      <IndicadorDeFrescor
+        atualizadoEm={painel.dataUpdatedAt}
+        atualizando={painel.isFetching}
+        comErro={painel.isError}
+        onAtualizar={() => {
+          painel.refetch()
+        }}
+      />
+
       {painel.isPending && <p className="text-sm text-text-muted">Carregando indicadores...</p>}
 
-      {painel.isError && (
+      {painel.isError && !dados && (
         <div
           role="alert"
           className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted px-3 py-2 text-sm"
