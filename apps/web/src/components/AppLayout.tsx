@@ -9,6 +9,7 @@ const SECOES = [
   { caminho: '/clientes', rotulo: 'Clientes' },
   { caminho: '/rotas', rotulo: 'Rotas' },
   { caminho: '/prospeccoes', rotulo: 'Prospecções' },
+  { caminho: '/produtos', rotulo: 'Produtos' },
   { caminho: '/metas', rotulo: 'Metas' },
   { caminho: '/materiais', rotulo: 'Materiais de PDV' },
   { caminho: '/usuarios', rotulo: 'Usuários' },
