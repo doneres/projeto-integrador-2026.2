@@ -1,4 +1,13 @@
-import type { Customer, Loan, PosMaterial, Product, Route, User, Visit } from '@axis/contracts'
+import type {
+  Customer,
+  Goal,
+  Loan,
+  PosMaterial,
+  Product,
+  Route,
+  User,
+  Visit,
+} from '@axis/contracts'
 import { hojeEmSaoPaulo } from '../lib/datas'
 
 /** Senha fictícia aceita pela API simulada para os usuários de teste. Só existe no MSW. */
@@ -670,4 +679,34 @@ export const comodatosMock: Loan[] = [
     createdAt: '2026-10-18T14:00:00Z',
     updatedAt: '2026-10-18T14:00:00Z',
   },
+]
+
+// Metas mensais cadastradas pelo Diretor (RF18, RF23, RN02).
+// Mês de referência no seed: novembro de 2026 (2026-11-01).
+const DIRETORA = '0192f4a0-0000-7000-8000-0000000000a6'
+
+export const metasMock: Goal[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000091',
+    sellerId: BRUNO,
+    month: '2026-11-01',
+    revenueTargetCents: 1500000, // R$ 15.000,00
+    visitsTarget: 25,
+    newCustomersTarget: 3,
+    setById: DIRETORA,
+    createdAt: '2026-11-01T08:00:00Z',
+    updatedAt: '2026-11-01T08:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000092',
+    sellerId: DIEGO,
+    month: '2026-11-01',
+    revenueTargetCents: 1200000, // R$ 12.000,00
+    visitsTarget: 20,
+    newCustomersTarget: 2,
+    setById: DIRETORA,
+    createdAt: '2026-11-01T08:00:00Z',
+    updatedAt: '2026-11-01T08:00:00Z',
+  },
+  // Lia Modelo (vendedor da equipe do Carlos) propositalmente começa SEM meta para testar o caso "sem meta" / nulo.
 ]

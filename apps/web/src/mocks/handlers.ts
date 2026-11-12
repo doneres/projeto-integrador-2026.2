@@ -1,15 +1,21 @@
 import {
   type Customer,
   type CustomerFilters,
+  calcularScoreRN02,
   createRouteBodySchema,
   customerFiltersSchema,
   customerInputSchema,
   customerRejectionSchema,
   customerStatusChangeSchema,
   type DashboardSummary,
+  DEFAULT_SCORE_WEIGHTS,
   dashboardFiltersSchema,
   type ErroDeCampo,
   errosDeValidacao,
+  type Goal,
+  type GoalsMonthlyReport,
+  goalFiltersSchema,
+  goalInputSchema,
   type Loan,
   type LoanDetail,
   loanEndSchema,
@@ -29,6 +35,8 @@ import {
   type Route,
   type RouteDetail,
   routeFiltersSchema,
+  type ScoreWeights,
+  type SellerScoreSummary,
   type Session,
   type User,
   userFiltersSchema,
@@ -41,6 +49,7 @@ import {
   clientesMock,
   comodatosMock,
   materiaisMock,
+  metasMock,
   type PedidoSimulado,
   pedidosMock,
   produtosMock,
@@ -60,6 +69,7 @@ let visitas: Visit[] = structuredClone(visitasMock)
 let produtos: Product[] = structuredClone(produtosMock)
 let materiais: PosMaterial[] = structuredClone(materiaisMock)
 let comodatos: Loan[] = structuredClone(comodatosMock)
+let metas: Goal[] = structuredClone(metasMock)
 const pedidos: PedidoSimulado[] = structuredClone(pedidosMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
@@ -256,6 +266,92 @@ function resumoDoPainel(usuario: User, date: string): DashboardSummary {
     revenueCents,
     ordersCount: pedidosDoMes.length,
     visitsBySeller,
+  }
+}
+
+/** Calcula o relatório mensal de metas e score ponderado por vendedor (RF18, RF23, RN02). */
+function relatorioDeMetas(
+  month: string,
+  pesos: ScoreWeights = DEFAULT_SCORE_WEIGHTS,
+): GoalsMonthlyReport {
+  const diaPrimeiro = `${month}-01`
+  const vendedores = usuariosMock
+    .filter((u) => u.role === 'seller')
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+
+  const sellers: SellerScoreSummary[] = vendedores.map((vendedor) => {
+    const coordenador = usuariosMock.find((u) => u.id === vendedor.coordinatorId)
+    const metaCadastrada = metas.find((m) => m.sellerId === vendedor.id && m.month === diaPrimeiro)
+
+    // Faturamento do mês (pedidos emitidos no mês pelo vendedor)
+    const pedidosDoVendedor = pedidos.filter(
+      (p) => p.sellerId === vendedor.id && hojeEmSaoPaulo(new Date(p.occurredAt)).startsWith(month),
+    )
+    const revenueRealized = pedidosDoVendedor.reduce((acc, p) => acc + p.totalCents, 0)
+
+    // Visitas concluídas no mês pelo vendedor (rotas do mês com visitas concluídas)
+    const rotasDoMes = rotas.filter((r) => r.sellerId === vendedor.id && r.date.startsWith(month))
+    const idsRotasMes = new Set(rotasDoMes.map((r) => r.id))
+    const visitasConcluidas = visitas.filter(
+      (v) => idsRotasMes.has(v.routeId) && visitStatusOf(v) === 'completed',
+    ).length
+
+    // Novos clientes: prospecções cadastradas pelo vendedor e APROVADAS neste mês (RN02)
+    const novosClientes = clientes.filter(
+      (c) =>
+        c.createdById === vendedor.id &&
+        c.origin === 'prospect' &&
+        c.approvedAt !== null &&
+        hojeEmSaoPaulo(new Date(c.approvedAt)).startsWith(month),
+    ).length
+
+    const hasGoal = Boolean(metaCadastrada)
+    const perf = calcularScoreRN02(
+      {
+        revenue: {
+          realized: revenueRealized,
+          target: metaCadastrada?.revenueTargetCents,
+        },
+        visits: {
+          realized: visitasConcluidas,
+          target: metaCadastrada?.visitsTarget,
+        },
+        newCustomers: {
+          realized: novosClientes,
+          target: metaCadastrada?.newCustomersTarget,
+        },
+      },
+      pesos,
+    )
+
+    return {
+      sellerId: vendedor.id,
+      sellerName: vendedor.name,
+      coordinatorId: vendedor.coordinatorId,
+      coordinatorName: coordenador?.name ?? null,
+      month,
+      hasGoal,
+      revenue: perf.revenue,
+      visits: perf.visits,
+      newCustomers: perf.newCustomers,
+      score: perf.score,
+    }
+  })
+
+  // Média de score dos vendedores que possuem score calculado
+  const scoresValidos = sellers
+    .map((s) => s.score)
+    .filter((s): s is number => typeof s === 'number')
+  const overallScore =
+    scoresValidos.length > 0
+      ? Math.round((scoresValidos.reduce((acc, s) => acc + s, 0) / scoresValidos.length) * 10) / 10
+      : null
+
+  return {
+    month,
+    weights: pesos,
+    sellers,
+    overallScore,
   }
 }
 
@@ -1062,5 +1158,93 @@ export const handlers = [
     }
     comodatos = comodatos.map((c) => (c.id === atual.id ? atualizado : c))
     return HttpResponse.json(detalheComodato(atualizado))
+  }),
+
+  // --- Metas e Score RN02 (#43, #63) ---
+
+  http.get('/v1/goals', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    // Metas e score do diretor são acessíveis por Diretor, Coordenador (leitura) ou Administrador
+    if (
+      usuario.role !== 'director' &&
+      usuario.role !== 'coordinator' &&
+      usuario.role !== 'administrator'
+    ) {
+      return semPermissao()
+    }
+    const url = new URL(request.url)
+    const query = Object.fromEntries(url.searchParams)
+    const parse = goalFiltersSchema.safeParse(query)
+    if (!parse.success) {
+      return validacao(errosDeValidacao(parse.error))
+    }
+    const month = parse.data.month ?? hojeEmSaoPaulo().slice(0, 7)
+    const relatorio = relatorioDeMetas(month)
+
+    // Se forneceu sellerId, filtra
+    if (parse.data.sellerId) {
+      const filtrado = relatorio.sellers.filter((s) => s.sellerId === parse.data.sellerId)
+      return HttpResponse.json({ ...relatorio, sellers: filtrado })
+    }
+
+    return HttpResponse.json(relatorio)
+  }),
+
+  http.put('/v1/goals/:sellerId/:month', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'director') {
+      return semPermissao()
+    }
+    const sellerId = String(params.sellerId)
+    const monthParam = String(params.month)
+    const vendedor = usuariosMock.find((u) => u.id === sellerId && u.role === 'seller')
+    if (!vendedor) {
+      return problema(404, 'NAO_ENCONTRADO', 'Vendedor não encontrado')
+    }
+    // Converte YYYY-MM para YYYY-MM-01
+    const diaPrimeiro = monthParam.length === 7 ? `${monthParam}-01` : monthParam
+    if (!/^\d{4}-\d{2}-01$/.test(diaPrimeiro)) {
+      return validacao([{ campo: 'month', mensagem: 'Mês inválido' }])
+    }
+
+    const corpo = goalInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+
+    const instante = agora()
+    const existenteIndex = metas.findIndex(
+      (m) => m.sellerId === sellerId && m.month === diaPrimeiro,
+    )
+
+    const metaSalva: Goal = {
+      id: existenteIndex >= 0 ? metas[existenteIndex].id : crypto.randomUUID(),
+      sellerId,
+      month: diaPrimeiro,
+      revenueTargetCents: corpo.data.revenueTargetCents ?? null,
+      visitsTarget: corpo.data.visitsTarget ?? null,
+      newCustomersTarget: corpo.data.newCustomersTarget ?? null,
+      setById: usuario.id,
+      createdAt: existenteIndex >= 0 ? metas[existenteIndex].createdAt : instante,
+      updatedAt: instante,
+    }
+
+    if (existenteIndex >= 0) {
+      metas[existenteIndex] = metaSalva
+    } else {
+      metas = [...metas, metaSalva]
+    }
+
+    const relatorio = relatorioDeMetas(diaPrimeiro.slice(0, 7))
+    const resumo = relatorio.sellers.find((s) => s.sellerId === sellerId)
+    return HttpResponse.json(resumo)
   }),
 ]

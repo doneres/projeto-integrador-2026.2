@@ -1,6 +1,7 @@
 import {
   customerSchema,
   dashboardSummarySchema,
+  goalsMonthlyReportSchema,
   loanDetailSchema,
   pageOf,
   posMaterialSchema,
@@ -8,6 +9,7 @@ import {
   productSchema,
   routeDetailSchema,
   routeSchema,
+  sellerScoreSummarySchema,
   sessionSchema,
   userSchema,
 } from '@axis/contracts'
@@ -569,5 +571,48 @@ describe('API simulada segue o contrato', () => {
     })
     expect(reencerrado.status).toBe(409)
     expect(reencerrado.corpo.codigo).toBe('TRANSICAO_INVALIDA')
+  })
+
+  it('permite consulta de metas e cálculo do score RN02 pelo Diretor (#43, #63)', async () => {
+    const diretorHeaders = await entrar('diretor@axis.example')
+    const vendedorHeaders = await entrar('vendedor@axis.example')
+    const mesAtual = hojeEmSaoPaulo().slice(0, 7)
+
+    // Vendedor não pode acessar metas (403)
+    const negado = await chamar(problemaSchema, `/v1/goals?month=${mesAtual}`, {
+      headers: vendedorHeaders,
+    })
+    expect(negado.status).toBe(403)
+
+    // Diretor consulta relatório de metas do mês
+    const relatorio = await chamar(goalsMonthlyReportSchema, `/v1/goals?month=${mesAtual}`, {
+      headers: diretorHeaders,
+    })
+    expect(relatorio.status).toBe(200)
+    expect(relatorio.corpo.sellers.length).toBeGreaterThanOrEqual(1)
+    expect(relatorio.corpo.weights.revenue).toBe(50)
+    expect(relatorio.corpo.weights.visits).toBe(30)
+    expect(relatorio.corpo.weights.newCustomers).toBe(20)
+
+    // Diretor cadastra/atualiza meta para Lia Modelo (que estava sem meta)
+    const liaId = '0192f4a0-0000-7000-8000-0000000000a5'
+    const atualizado = await chamar(sellerScoreSummarySchema, `/v1/goals/${liaId}/${mesAtual}`, {
+      method: 'PUT',
+      headers: diretorHeaders,
+      body: JSON.stringify({
+        revenueTargetCents: 1000000, // R$ 10.000
+        visitsTarget: 20,
+        newCustomersTarget: 2,
+      }),
+    })
+    expect(atualizado.status).toBe(200)
+    expect(atualizado.corpo.hasGoal).toBe(true)
+    expect(atualizado.corpo.revenue.target).toBe(1000000)
+    expect(atualizado.corpo.visits.target).toBe(20)
+    expect(atualizado.corpo.newCustomers.target).toBe(2)
+    // O score calculado respeita o teto de 100% da RN02
+    if (atualizado.corpo.score !== null) {
+      expect(atualizado.corpo.score).toBeLessThanOrEqual(100)
+    }
   })
 })
