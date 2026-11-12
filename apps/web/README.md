@@ -34,7 +34,10 @@ A API simulada roda num service worker. O recarregamento forçado (Ctrl+Shift+R)
 
 | Perfil | E-mail | Matrícula | Senha |
 |---|---|---|---|
-| Coordenador | `gestor@axis.example` | `1001` | `axis-demo-2026` |
+| Coordenador (Equipe A) | `gestor@axis.example` | `1001` | `axis-demo-2026` |
+| Coordenador (Equipe B) | `coordenador.b@axis.example` | `1002` | `axis-demo-2026` |
+| Diretor | `diretor@axis.example` | `3001` | `axis-demo-2026` |
+| Administrador | `administrador@axis.example` | `4001` | `axis-demo-2026` |
 | Vendedor | `vendedor@axis.example` | `2001` | `axis-demo-2026` |
 
 São dados fictícios que só existem na API simulada (`src/mocks/data.ts`). O vendedor é barrado no painel, que é da gestão (RF02).
@@ -52,6 +55,16 @@ Dentro de `apps/web` (ou na raiz, com `pnpm --filter @axis/web <script>`):
 | `pnpm preview` | Serve o build de produção localmente |
 
 Lint e formatação rodam na raiz: `pnpm lint` verifica e `pnpm lint:fix` corrige.
+
+## Tempo quase real (polling)
+
+Decisão do spec #52: **"tempo real" = até 30 s depois de o servidor receber o dado** (cerca de um minuto ponta a ponta, somando o envio da fila do app). Sem SSE nem websocket.
+
+- **Consultas vivas** usam `opcoesDeConsultaViva` (`src/lib/query-client.ts`): repetem a cada 30 s **só com a aba visível** e buscam na hora ao voltar o foco. Hoje: dashboard (#61), lista e detalhe das rotas com estado das Visitas e Flags de auditoria (#62).
+- **Cadastros e formulários não fazem polling** (clientes, vendedores, montagem de rota). A atualização automática não mexe no que está sendo digitado: os formulários guardam o próprio estado.
+- Cada tela viva mostra **"Atualizado às HH:mm:ss"**, um sinal de "Atualizando...", o botão **Atualizar** e a nota de que Visitas feitas sem sinal aparecem quando o Vendedor sincronizar.
+- Se a busca falhar, o último dado continua na tela com o aviso **"sem atualizar desde HH:mm"** e o polling segue tentando sozinho. Um 401 durante o polling encerra a sessão e leva ao login, como no resto do painel.
+- **Custo no Neon:** um painel visível mantém o banco acordado (autosuspend de ~5 min; ≈ 6 CU-h por dia de painel aberto, contra 100 CU-h/mês do plano grátis). Não deixe o painel aberto por dias fora das janelas de teste e de apresentação.
 
 ## Sessão e segurança
 

@@ -15,10 +15,16 @@ export function formatarData(data: string): string {
 }
 
 const HORA = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short', timeZone: FUSO })
+const HORA_COM_SEGUNDOS = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium', timeZone: FUSO })
 
-/** Instante da API (UTC) → hora em São Paulo. Ex.: 2026-11-06T13:05:00Z → 10:05 */
-export function formatarHora(instante: string): string {
+/** Instante da API (UTC) ou milissegundos → hora em São Paulo (HH:mm). Ex.: 2026-11-06T13:05:00Z → 10:05 */
+export function formatarHora(instante: string | number): string {
   return HORA.format(new Date(instante))
+}
+
+/** Instante (ISO ou milissegundos) → hora com segundos em São Paulo (HH:mm:ss). Ex.: 10:05:30 */
+export function formatarHoraComSegundos(instante: string | number): string {
+  return HORA_COM_SEGUNDOS.format(new Date(instante))
 }
 
 const MES = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
