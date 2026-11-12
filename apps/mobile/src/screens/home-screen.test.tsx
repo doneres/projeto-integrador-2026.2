@@ -2,6 +2,7 @@ import type { RouteDetail } from '@axis/contracts'
 import { createFakeAppData, type FakeExtras, sellerSession } from '@test/fake-app-data'
 import { routeWith } from '@test/route-fixtures'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import { router } from 'expo-router'
 import { SessionProvider } from '@/hooks/session'
 import { NetworkError } from '@/services/api-client'
 import { HomeScreen } from './home-screen'
@@ -28,6 +29,16 @@ describe('HomeScreen', () => {
     await renderHome()
     expect(screen.getByRole('header', { name: 'AXIS' })).toBeOnTheScreen()
     expect(screen.getByRole('header', { name: 'Rota do dia' })).toBeOnTheScreen()
+  })
+
+  it('Minhas prospecções leva à lista de Prospecções', async () => {
+    const push = jest.spyOn(router, 'push').mockImplementation(() => {})
+    await renderHome()
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver minhas prospecções' }))
+
+    expect(push).toHaveBeenCalledWith('/prospeccoes')
+    push.mockRestore()
   })
 
   it('Sair apaga o token do aparelho', async () => {

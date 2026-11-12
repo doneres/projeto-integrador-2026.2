@@ -127,6 +127,7 @@ Cuidados:
 
 - **Escopo por perfil** ([`src/access/scope.ts`](./src/access/scope.ts)): o Vendedor lê só as próprias rotas e os clientes delas (mais as prospecções que ele cadastrou); o Coordenador, a sua Equipe; o Diretor, tudo; o Administrador recebe `403 SEM_PERMISSAO`. Recurso fora do escopo responde `404`, igual a um que não existe.
 - `GET /v1/routes/today` é a tela do dia do Vendedor: a rota de hoje (data de calendário em America/Sao_Paulo) com as Visitas pela `position`, o `status` derivado de cada uma e o Cliente. Sem rota no dia, `404 SEM_ROTA_HOJE`. `GET /v1/routes/{id}` e `GET /v1/routes` servem à gestão.
+- `GET /v1/sync/snapshot` (só Vendedor) é o snapshot do app (#27): as rotas de hoje e de amanhã (cada Visita com o Cliente), o raio do Check-in e as Prospecções que o próprio Vendedor cadastrou, com o estado e, se Rejeitada, o motivo. É sempre completo, e dia sem rota não é erro (a lista vem sem ele). Comodatos e Produtos entram quando essas tabelas existirem.
 - O estado da Visita (Pendente, Em andamento, Concluída, Não realizada) não é coluna: vem de `visitStatusOf`, de `@axis/contracts`.
 - `GET /v1/customers` pagina e aceita `search` (nome fantasia, razão social ou CPF/CNPJ), `status`, `origin`, `district`, `sortBy` e `order`. Só o Coordenador cadastra (`POST`), edita (`PUT`) e inativa ou reativa (`PATCH .../status`) clientes da própria Equipe, sempre com coordenadas. Não existe exclusão.
 - `buildApp` aceita `now`, um relógio injetável: os testes o usam para provar o corte do dia em São Paulo.

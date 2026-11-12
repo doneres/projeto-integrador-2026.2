@@ -31,6 +31,19 @@ describe('rotas autenticadas', () => {
     expect(screen.queryByRole('header', { name: 'Entrar' })).not.toBeOnTheScreen()
   })
 
+  it('as prospecções abrem a partir da rota do dia e o Voltar retorna a ela', async () => {
+    await renderApp(true)
+    await waitFor(() => expect(screen.getByText('Rota do dia')).toBeOnTheScreen())
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver minhas prospecções' }))
+    await waitFor(() =>
+      expect(screen.getByRole('header', { name: 'Minhas prospecções' })).toBeOnTheScreen(),
+    )
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Voltar para a rota do dia' }))
+    await waitFor(() => expect(screen.getByText('Rota do dia')).toBeOnTheScreen())
+  })
+
   it('um 401 volta ao login e apaga o token', async () => {
     const data = await renderApp(true)
     await waitFor(() => expect(screen.getByText('Rota do dia')).toBeOnTheScreen())

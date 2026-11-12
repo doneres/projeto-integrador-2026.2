@@ -2,8 +2,7 @@ import type { RouteDetail } from '@axis/contracts'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState } from 'react-native'
 import { reconcileRoute } from '@/repositories/route-reconciliation'
-import { NetworkError, RequestTimeoutError } from '@/services/api-client'
-import { ApiUrlMissingError } from '@/services/api-url'
+import { loadErrorMessage } from './load-error'
 import { useSession } from './session'
 
 export type TodayRouteState =
@@ -12,18 +11,8 @@ export type TodayRouteState =
   | { status: 'empty' }
   | { status: 'error'; message: string }
 
-function messageFor(error: unknown): string {
-  if (error instanceof ApiUrlMissingError) {
-    return 'A URL da API não está configurada. Saia da conta e informe o endereço com um toque longo no logo AXIS.'
-  }
-  if (error instanceof RequestTimeoutError) {
-    return 'O servidor não respondeu a tempo. Tente de novo em instantes.'
-  }
-  if (error instanceof NetworkError) {
-    return 'Não foi possível conectar ao servidor. Confira a conexão e tente de novo.'
-  }
-  return 'Não foi possível carregar a rota do dia. Tente de novo.'
-}
+const messageFor = (error: unknown) =>
+  loadErrorMessage(error, 'Não foi possível carregar a rota do dia. Tente de novo.')
 
 /**
  * Rota do dia do Vendedor e o quão fresca ela está.

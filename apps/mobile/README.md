@@ -62,6 +62,12 @@ No Expo Go, `localhost` aponta para o próprio celular. Use o **IP da sua máqui
 - Sem rede, uma leitura que falha não apaga a rota: ela continua na tela com a hora antiga e um aviso. A atualização não troca uma Visita em andamento (`reconcileRoute`); quando a fila existir, Visitas com operação pendente entram na mesma regra.
 - Nos testes, `createFakeAppData(auth, routes, { connectivity, now })` aceita um repositório de rota, uma rede e um relógio falsos, e `test/route-fixtures.ts` monta rotas nos quatro estados.
 
+## Minhas prospecções
+
+- A tela da rota do dia tem o botão **Minhas prospecções**, que abre a lista das Prospecções que o Vendedor cadastrou, com o estado em texto e ícone (Pendente de aprovação, Aprovada, Rejeitada) e o **motivo** quando Rejeitada. O desfecho aparece na atualização seguinte: a lista é lida ao abrir a tela.
+- `ProspectRepository` (`src/repositories/prospect-repository.ts`) lê `GET /v1/sync/snapshot` e fica com as Prospecções; na onda do offline (#27) o app lê do banco local, que o snapshot alimenta, sem mudar a tela. Prospecção não entra em rota nem recebe Pedido (RN04), por isso a lista é própria.
+- Nos testes, `createFakeAppData(auth, routes, { prospects })` aceita um repositório de Prospecções falso e `test/prospect-fixtures.ts` monta Prospecções nos estados.
+
 ## Scripts
 
 Dentro de `apps/mobile` (ou na raiz, com `pnpm --filter @axis/mobile <script>`):

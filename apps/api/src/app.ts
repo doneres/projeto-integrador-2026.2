@@ -16,6 +16,7 @@ import { customerRoutes } from './routes/customers'
 import { healthRoutes } from './routes/health'
 import { meRoutes } from './routes/me'
 import { routeReadingRoutes } from './routes/routes'
+import { syncRoutes } from './routes/sync'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -76,6 +77,7 @@ export async function buildApp({
   await app.register(meRoutes)
   await app.register(customerRoutes)
   await app.register(routeReadingRoutes)
+  await app.register(syncRoutes)
 
   return app
 }
