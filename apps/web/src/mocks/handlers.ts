@@ -26,6 +26,7 @@ import {
   type Page,
   type PosMaterial,
   type Product,
+  passwordResetSchema,
   posMaterialFiltersSchema,
   posMaterialInputSchema,
   posMaterialStatusChangeSchema,
@@ -39,7 +40,11 @@ import {
   type SellerScoreSummary,
   type Session,
   type User,
+  type UserWithCoordinator,
   userFiltersSchema,
+  userInputSchema,
+  userStatusChangeSchema,
+  userUpdateInputSchema,
   type Visit,
   visitStatusOf,
 } from '@axis/contracts'
@@ -70,6 +75,8 @@ let produtos: Product[] = structuredClone(produtosMock)
 let materiais: PosMaterial[] = structuredClone(materiaisMock)
 let comodatos: Loan[] = structuredClone(comodatosMock)
 let metas: Goal[] = structuredClone(metasMock)
+let usuarios: User[] = structuredClone(usuariosMock)
+const senhasDeUsuarios: Map<string, string> = new Map()
 const pedidos: PedidoSimulado[] = structuredClone(pedidosMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
@@ -92,7 +99,11 @@ function usuarioDaRequisicao(request: Request): User | undefined {
     return undefined
   }
   const id = cabecalho.slice(PREFIXO_DO_TOKEN.length)
-  return usuariosMock.find((usuario) => usuario.id === id)
+  const usuario = usuarios.find((u) => u.id === id)
+  if (!usuario?.active) {
+    return undefined
+  }
+  return usuario
 }
 
 const naoAutenticado = () =>
@@ -161,9 +172,12 @@ function pagina<T>(itens: T[], page: number, perPage: number): Page<T> {
 
 /** Vendedores que o usuário enxerga: o Coordenador, os da Equipe; o Diretor, todos. */
 function idsDaEquipe(usuario: User): string[] {
-  return usuariosMock
+  return usuarios
     .filter(
-      (u) => u.role === 'seller' && (usuario.role === 'director' || u.coordinatorId === usuario.id),
+      (u) =>
+        u.role === 'seller' &&
+        u.active &&
+        (usuario.role === 'director' || u.coordinatorId === usuario.id),
     )
     .map((u) => u.id)
 }
@@ -211,9 +225,12 @@ function validacao(erros: ErroDeCampo[]) {
 /** Resumo consolidado do dia e faturamento do mês para o escopo do usuário (#40). */
 function resumoDoPainel(usuario: User, date: string): DashboardSummary {
   const month = date.slice(0, 7)
-  const vendedores = usuariosMock
+  const vendedores = usuarios
     .filter(
-      (u) => u.role === 'seller' && (usuario.role === 'director' || u.coordinatorId === usuario.id),
+      (u) =>
+        u.role === 'seller' &&
+        u.active &&
+        (usuario.role === 'director' || u.coordinatorId === usuario.id),
     )
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
   const idsVendedores = new Set(vendedores.map((v) => v.id))
@@ -275,12 +292,12 @@ function relatorioDeMetas(
   pesos: ScoreWeights = DEFAULT_SCORE_WEIGHTS,
 ): GoalsMonthlyReport {
   const diaPrimeiro = `${month}-01`
-  const vendedores = usuariosMock
+  const vendedores = usuarios
     .filter((u) => u.role === 'seller')
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 
   const sellers: SellerScoreSummary[] = vendedores.map((vendedor) => {
-    const coordenador = usuariosMock.find((u) => u.id === vendedor.coordinatorId)
+    const coordenador = usuarios.find((u) => u.id === vendedor.coordinatorId)
     const metaCadastrada = metas.find((m) => m.sellerId === vendedor.id && m.month === diaPrimeiro)
 
     // Faturamento do mês (pedidos emitidos no mês pelo vendedor)
@@ -364,12 +381,18 @@ export const handlers = [
       return validacao(errosDeValidacao(corpo.error))
     }
     const { identifier, password } = corpo.data
-    const usuario = usuariosMock.find(
+    const usuario = usuarios.find(
       (u) => u.email.toLowerCase() === identifier.toLowerCase() || u.registration === identifier,
     )
-    if (!usuario || password !== SENHA_DEMO) {
+    const senhaEsperada = usuario ? (senhasDeUsuarios.get(usuario.id) ?? SENHA_DEMO) : null
+    if (!usuario || password !== senhaEsperada) {
       return problema(401, 'CREDENCIAIS_INVALIDAS', 'Credenciais inválidas', {
         detail: 'E-mail/matrícula ou senha incorretos.',
+      })
+    }
+    if (!usuario.active) {
+      return problema(401, 'CREDENCIAIS_INVALIDAS', 'Credenciais inválidas', {
+        detail: 'Esta conta está desativada.',
       })
     }
     const expiresAt = new Date(Date.now() + DURACAO_DA_SESSAO_MS)
@@ -377,6 +400,14 @@ export const handlers = [
       .replace(/\.\d+Z$/, 'Z')
     const sessao: Session = { token: `token-simulado-${usuario.id}`, expiresAt, user: usuario }
     return HttpResponse.json(sessao)
+  }),
+
+  http.get('/v1/me', async ({ request }) => {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    return HttpResponse.json(usuario)
   }),
 
   http.get('/v1/customers', async ({ request }) => {
@@ -562,14 +593,18 @@ export const handlers = [
     return HttpResponse.json(atualizado)
   }),
 
-  // Usuários e montagem de rota: imitam o que a #79 vai entregar na API real.
+  // Gestão de usuários, perfis e redefinição de senha (#45, #79).
   http.get('/v1/users', async ({ request }) => {
     await delay(200)
     const usuario = usuarioDaRequisicao(request)
     if (!usuario) {
       return naoAutenticado()
     }
-    if (usuario.role !== 'coordinator' && usuario.role !== 'director') {
+    if (
+      usuario.role !== 'coordinator' &&
+      usuario.role !== 'director' &&
+      usuario.role !== 'administrator'
+    ) {
       return semPermissao()
     }
     const consulta = userFiltersSchema.safeParse(
@@ -578,12 +613,245 @@ export const handlers = [
     if (!consulta.success) {
       return validacao(errosDeValidacao(consulta.error))
     }
-    const { role, page, perPage } = consulta.data
-    const equipe = idsDaEquipe(usuario)
-    const encontrados = usuariosMock
-      .filter((u) => equipe.includes(u.id) && (!role || u.role === role))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
-    return HttpResponse.json(pagina(encontrados, page, perPage))
+    const { role, search, active, coordinatorId, sortBy, order, page, perPage } = consulta.data
+
+    let base = usuarios
+    if (usuario.role === 'coordinator') {
+      const equipe = idsDaEquipe(usuario)
+      base = base.filter((u) => equipe.includes(u.id))
+    }
+
+    let encontrados = base.filter((u) => {
+      if (role && u.role !== role) return false
+      if (active !== undefined && u.active !== active) return false
+      if (coordinatorId && u.coordinatorId !== coordinatorId) return false
+      if (search) {
+        const termo = search.toLowerCase()
+        const bateu =
+          u.name.toLowerCase().includes(termo) ||
+          u.email.toLowerCase().includes(termo) ||
+          u.registration.toLowerCase().includes(termo)
+        if (!bateu) return false
+      }
+      return true
+    })
+
+    const multiplicador = order === 'desc' ? -1 : 1
+    encontrados = encontrados.sort((a, b) => {
+      let comp = 0
+      if (sortBy === 'name') comp = a.name.localeCompare(b.name, 'pt-BR')
+      else if (sortBy === 'email') comp = a.email.localeCompare(b.email, 'pt-BR')
+      else if (sortBy === 'registration')
+        comp = a.registration.localeCompare(b.registration, 'pt-BR')
+      else if (sortBy === 'role') comp = a.role.localeCompare(b.role)
+      return (comp || a.id.localeCompare(b.id)) * multiplicador
+    })
+
+    const comCoordenador: UserWithCoordinator[] = encontrados.map((u) => {
+      const coordenador = u.coordinatorId ? usuarios.find((c) => c.id === u.coordinatorId) : null
+      return {
+        ...u,
+        coordinatorName: coordenador ? coordenador.name : null,
+      }
+    })
+
+    return HttpResponse.json(pagina(comCoordenador, page, perPage))
+  }),
+
+  http.get('/v1/users/:id', async ({ request, params }) => {
+    await delay(150)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const id = String(params.id)
+    const encontrado = usuarios.find((u) => u.id === id)
+    if (!encontrado) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    if (usuario.role !== 'administrator' && usuario.id !== id) {
+      return semPermissao()
+    }
+    const coordenador = encontrado.coordinatorId
+      ? usuarios.find((c) => c.id === encontrado.coordinatorId)
+      : null
+    const resposta: UserWithCoordinator = {
+      ...encontrado,
+      coordinatorName: coordenador ? coordenador.name : null,
+    }
+    return HttpResponse.json(resposta)
+  }),
+
+  http.post('/v1/users', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = userInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const { name, email, registration, role, coordinatorId, password } = corpo.data
+    if (usuarios.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+      return problema(409, 'EMAIL_JA_CADASTRADO', 'E-mail já cadastrado', {
+        detail: 'Já existe um usuário com este e-mail.',
+      })
+    }
+    if (usuarios.some((u) => u.registration.toLowerCase() === registration.toLowerCase())) {
+      return problema(409, 'MATRICULA_JA_CADASTRADA', 'Matrícula já cadastrada', {
+        detail: 'Já existe um usuário com esta matrícula.',
+      })
+    }
+    if (role === 'seller' && coordinatorId) {
+      const coord = usuarios.find((u) => u.id === coordinatorId && u.role === 'coordinator')
+      if (!coord?.active) {
+        return validacao([{ campo: 'coordinatorId', mensagem: 'Coordenador inválido ou inativo.' }])
+      }
+    }
+    const novo: User = {
+      id: crypto.randomUUID(),
+      name,
+      email,
+      registration,
+      role,
+      coordinatorId: role === 'seller' ? (coordinatorId ?? null) : null,
+      active: true,
+    }
+    if (password) {
+      senhasDeUsuarios.set(novo.id, password)
+    }
+    usuarios.push(novo)
+    return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.put('/v1/users/:id', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const id = String(params.id)
+    const existente = usuarios.find((u) => u.id === id)
+    if (!existente) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    const corpo = userUpdateInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const { name, email, registration, role, coordinatorId } = corpo.data
+    if (usuarios.some((u) => u.id !== id && u.email.toLowerCase() === email.toLowerCase())) {
+      return problema(409, 'EMAIL_JA_CADASTRADO', 'E-mail já cadastrado', {
+        detail: 'Já existe um usuário com este e-mail.',
+      })
+    }
+    if (
+      usuarios.some(
+        (u) => u.id !== id && u.registration.toLowerCase() === registration.toLowerCase(),
+      )
+    ) {
+      return problema(409, 'MATRICULA_JA_CADASTRADA', 'Matrícula já cadastrada', {
+        detail: 'Já existe um usuário com esta matrícula.',
+      })
+    }
+    if (existente.role === 'coordinator' && role !== 'coordinator') {
+      const temVendedores = usuarios.some((u) => u.coordinatorId === id)
+      if (temVendedores) {
+        return problema(
+          409,
+          'COORDENADOR_COM_VENDEDORES',
+          'Coordenador possui vendedores vinculados',
+          {
+            detail:
+              'Não é possível alterar o perfil de um coordenador que possui vendedores vinculados.',
+          },
+        )
+      }
+    }
+    if (role === 'seller' && coordinatorId) {
+      const coord = usuarios.find((u) => u.id === coordinatorId && u.role === 'coordinator')
+      if (!coord?.active) {
+        return validacao([{ campo: 'coordinatorId', mensagem: 'Coordenador inválido ou inativo.' }])
+      }
+    }
+    const atualizado: User = {
+      ...existente,
+      name,
+      email,
+      registration,
+      role,
+      coordinatorId: role === 'seller' ? (coordinatorId ?? null) : null,
+    }
+    usuarios = usuarios.map((u) => (u.id === id ? atualizado : u))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.patch('/v1/users/:id/status', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const id = String(params.id)
+    const existente = usuarios.find((u) => u.id === id)
+    if (!existente) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    const corpo = userStatusChangeSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (existente.id === usuario.id && !corpo.data.active) {
+      return problema(409, 'NAO_PODE_DESATIVAR_A_SI_MESMO', 'Ação não permitida', {
+        detail: 'Você não pode desativar a sua própria conta conectada.',
+      })
+    }
+    const atualizado: User = {
+      ...existente,
+      active: corpo.data.active,
+    }
+    usuarios = usuarios.map((u) => (u.id === id ? atualizado : u))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.post('/v1/users/:id/password-reset', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const id = String(params.id)
+    const existente = usuarios.find((u) => u.id === id)
+    if (!existente) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    const corpo = passwordResetSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    senhasDeUsuarios.set(existente.id, corpo.data.newPassword)
+    return HttpResponse.json({ message: 'Senha redefinida com sucesso.' })
   }),
 
   http.get('/v1/routes', async ({ request }) => {
@@ -1205,7 +1473,7 @@ export const handlers = [
     }
     const sellerId = String(params.sellerId)
     const monthParam = String(params.month)
-    const vendedor = usuariosMock.find((u) => u.id === sellerId && u.role === 'seller')
+    const vendedor = usuarios.find((u) => u.id === sellerId && u.role === 'seller')
     if (!vendedor) {
       return problema(404, 'NAO_ENCONTRADO', 'Vendedor não encontrado')
     }

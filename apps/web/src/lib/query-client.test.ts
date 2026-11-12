@@ -29,6 +29,7 @@ describe('tratarErroGlobal', () => {
         registration: '1001',
         role: 'coordinator',
         coordinatorId: null,
+        active: true,
       },
     })
     tratarErroGlobal(new ApiError({ status: 401, codigo: 'NAO_AUTENTICADO', mensagem: '' }))

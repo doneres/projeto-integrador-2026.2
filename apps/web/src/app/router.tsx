@@ -4,7 +4,6 @@ import { RotaProtegida } from '../features/auth/RotaProtegida'
 import { ClienteFormPage } from '../pages/ClienteFormPage'
 import { ClientesPage } from '../pages/ClientesPage'
 import { DashboardPage } from '../pages/DashboardPage'
-import { EmConstrucaoPage } from '../pages/EmConstrucaoPage'
 import { LoginPage } from '../pages/LoginPage'
 import { MateriaisPage } from '../pages/MateriaisPage'
 import { MetasPage } from '../pages/MetasPage'
@@ -14,6 +13,7 @@ import { ProspeccoesPage } from '../pages/ProspeccoesPage'
 import { RotaDetalhePage } from '../pages/RotaDetalhePage'
 import { RotaNovaPage } from '../pages/RotaNovaPage'
 import { RotasPage } from '../pages/RotasPage'
+import { UsuariosPage } from '../pages/UsuariosPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
       { path: 'produtos', element: <ProdutosPage />, handle: { titulo: 'Produtos' } },
       { path: 'metas', element: <MetasPage />, handle: { titulo: 'Metas' } },
       { path: 'materiais', element: <MateriaisPage />, handle: { titulo: 'Materiais de PDV' } },
-      { path: 'usuarios', element: <EmConstrucaoPage />, handle: { titulo: 'Usuários' } },
+      { path: 'usuarios', element: <UsuariosPage />, handle: { titulo: 'Usuários' } },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

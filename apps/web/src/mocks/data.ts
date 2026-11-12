@@ -22,6 +22,7 @@ export const usuariosMock: User[] = [
     registration: '1001',
     role: 'coordinator',
     coordinatorId: null,
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a2',
@@ -31,6 +32,7 @@ export const usuariosMock: User[] = [
     role: 'seller',
     // Vendedor da Equipe da Maria.
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a3',
@@ -39,6 +41,7 @@ export const usuariosMock: User[] = [
     registration: '2002',
     role: 'seller',
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a4',
@@ -47,6 +50,7 @@ export const usuariosMock: User[] = [
     registration: '1002',
     role: 'coordinator',
     coordinatorId: null,
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a5',
@@ -55,6 +59,7 @@ export const usuariosMock: User[] = [
     registration: '2004',
     role: 'seller',
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a4',
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a6',
@@ -63,6 +68,7 @@ export const usuariosMock: User[] = [
     registration: '3001',
     role: 'director',
     coordinatorId: null,
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a7',
@@ -71,6 +77,16 @@ export const usuariosMock: User[] = [
     registration: '4001',
     role: 'administrator',
     coordinatorId: null,
+    active: true,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a8',
+    name: 'Pedro Desativado',
+    email: 'pedro.inativo@axis.example',
+    registration: '2005',
+    role: 'seller',
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+    active: false,
   },
 ]
 
