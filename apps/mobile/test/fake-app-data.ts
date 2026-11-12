@@ -17,6 +17,7 @@ export function sellerSession(overrides: Partial<Session['user']> = {}): Session
       role: 'seller',
       coordinatorId: '0198f2a0-7c1e-7000-8000-000000000002',
       ...overrides,
+      active: overrides.active ?? true,
     },
   }
 }
