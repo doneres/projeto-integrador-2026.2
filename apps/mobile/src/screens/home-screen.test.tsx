@@ -1,5 +1,5 @@
 import type { RouteDetail } from '@axis/contracts'
-import { createFakeAppData, sellerSession } from '@test/fake-app-data'
+import { createFakeAppData, type FakeExtras, sellerSession } from '@test/fake-app-data'
 import { routeWith } from '@test/route-fixtures'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { SessionProvider } from '@/hooks/session'
@@ -8,8 +8,11 @@ import { HomeScreen } from './home-screen'
 
 type Today = () => Promise<RouteDetail | null>
 
-async function renderHome(today: Today = () => Promise.resolve(routeWith(['pending']))) {
-  const data = createFakeAppData(undefined, { today })
+async function renderHome(
+  today: Today = () => Promise.resolve(routeWith(['pending'])),
+  extras?: FakeExtras,
+) {
+  const data = createFakeAppData(undefined, { today }, extras)
   await data.sessions.save(sellerSession())
   await render(
     <SessionProvider data={data}>
@@ -89,6 +92,65 @@ describe('HomeScreen', () => {
       await waitFor(() => expect(screen.getByText('Mercado 1')).toBeOnTheScreen())
       expect(screen.queryByRole('alert')).not.toBeOnTheScreen()
       expect(today).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('Rota atualizada às', () => {
+    const at = (hour: number, minute: number) => new Date(2026, 10, 12, hour, minute)
+
+    it('mostra a hora da leitura, lida por extenso para o leitor de tela', async () => {
+      await renderHome(undefined, { now: () => at(9, 5) })
+      await waitFor(() => expect(screen.getByText('Rota atualizada às 09:05')).toBeOnTheScreen())
+      expect(screen.getByLabelText('Rota atualizada às 9 horas e 5 minutos')).toBeOnTheScreen()
+    })
+
+    it('sem rota hoje também mostra a hora e o botão Atualizar', async () => {
+      await renderHome(() => Promise.resolve(null), { now: () => at(7, 30) })
+      await waitFor(() => expect(screen.getByText('Rota atualizada às 07:30')).toBeOnTheScreen())
+      expect(screen.getByRole('button', { name: 'Atualizar a rota do dia' })).toBeOnTheScreen()
+    })
+
+    it('Atualizar relê a rota, troca a hora e mantém as Visitas na tela', async () => {
+      let current = at(9, 0)
+      const today = jest
+        .fn<Promise<RouteDetail | null>, []>()
+        .mockResolvedValueOnce(routeWith(['pending']))
+        .mockResolvedValueOnce(routeWith(['pending', 'pending']))
+      await renderHome(today, { now: () => current })
+      await waitFor(() => expect(screen.getByText('Rota atualizada às 09:00')).toBeOnTheScreen())
+
+      current = at(9, 40)
+      await fireEvent.press(screen.getByRole('button', { name: 'Atualizar a rota do dia' }))
+
+      await waitFor(() => expect(screen.getByText('Rota atualizada às 09:40')).toBeOnTheScreen())
+      expect(screen.getAllByTestId('visit-row')).toHaveLength(2)
+    })
+
+    it('sem rede, o Atualizar mantém a rota e a hora antigas e avisa', async () => {
+      let current = at(9, 0)
+      const today = jest
+        .fn<Promise<RouteDetail | null>, []>()
+        .mockResolvedValueOnce(routeWith(['pending']))
+        .mockRejectedValueOnce(new NetworkError())
+      await renderHome(today, { now: () => current })
+      await waitFor(() => expect(screen.getByText('Rota atualizada às 09:00')).toBeOnTheScreen())
+
+      current = at(10, 0)
+      await fireEvent.press(screen.getByRole('button', { name: 'Atualizar a rota do dia' }))
+
+      await waitFor(() => expect(screen.getByRole('alert')).toBeOnTheScreen())
+      expect(screen.getByText(/Não foi possível conectar ao servidor/)).toBeOnTheScreen()
+      expect(screen.getByText('Rota atualizada às 09:00')).toBeOnTheScreen()
+      expect(screen.getByText('Mercado 1')).toBeOnTheScreen()
+    })
+
+    it('no erro da primeira leitura não há hora nem botão Atualizar, só Tentar de novo', async () => {
+      await renderHome(() => Promise.reject(new NetworkError()))
+      await waitFor(() => expect(screen.getByRole('alert')).toBeOnTheScreen())
+      expect(screen.queryByText(/Rota atualizada às/)).not.toBeOnTheScreen()
+      expect(
+        screen.queryByRole('button', { name: 'Atualizar a rota do dia' }),
+      ).not.toBeOnTheScreen()
     })
   })
 })

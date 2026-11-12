@@ -2,6 +2,7 @@ import type { Session } from '@axis/contracts'
 import { type AppData, createAppData, createUnauthorizedBus } from '@/repositories/app-data'
 import type { AuthRepository } from '@/repositories/auth-repository'
 import type { RouteRepository } from '@/repositories/route-repository'
+import type { Connectivity } from '@/services/connectivity'
 import { createMemoryStore } from './memory-store'
 
 /** Sessão de Vendedor válida para os testes. */
@@ -27,12 +28,26 @@ export type FakeAppData = AppData & {
   emitUnauthorized(token?: string | null): void
 }
 
-/** Repositórios de verdade sobre armazenamento em memória; só o login e a rota podem ser falsos. */
-export function createFakeAppData(auth?: AuthRepository, routes?: RouteRepository): FakeAppData {
+export type FakeExtras = {
+  connectivity?: Connectivity
+  now?: () => Date
+}
+
+/**
+ * Repositórios de verdade sobre armazenamento em memória; só o login, a rota, a rede e o relógio
+ * podem ser falsos. Sem `connectivity`, o aparelho está sempre com rede.
+ */
+export function createFakeAppData(
+  auth?: AuthRepository,
+  routes?: RouteRepository,
+  { connectivity = { isOnline: async () => true }, now }: FakeExtras = {},
+): FakeAppData {
   const real = createAppData({
     store: createMemoryStore(),
     fetch: (() => Promise.reject(new Error('rede indisponível nos testes'))) as typeof fetch,
     envApiUrl: () => 'http://env.test',
+    connectivity,
+    now,
   })
   const unauthorized = createUnauthorizedBus()
   return {
