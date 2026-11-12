@@ -1,6 +1,7 @@
 import type { Session } from '@axis/contracts'
 import { type AppData, createAppData, createUnauthorizedBus } from '@/repositories/app-data'
 import type { AuthRepository } from '@/repositories/auth-repository'
+import type { ProspectRepository } from '@/repositories/prospect-repository'
 import type { RouteRepository } from '@/repositories/route-repository'
 import type { Connectivity } from '@/services/connectivity'
 import { createMemoryStore } from './memory-store'
@@ -29,18 +30,19 @@ export type FakeAppData = AppData & {
 }
 
 export type FakeExtras = {
+  prospects?: ProspectRepository
   connectivity?: Connectivity
   now?: () => Date
 }
 
 /**
- * Repositórios de verdade sobre armazenamento em memória; só o login, a rota, a rede e o relógio
- * podem ser falsos. Sem `connectivity`, o aparelho está sempre com rede.
+ * Repositórios de verdade sobre armazenamento em memória; só o login, a rota, as Prospecções, a
+ * rede e o relógio podem ser falsos. Sem `connectivity`, o aparelho está sempre com rede.
  */
 export function createFakeAppData(
   auth?: AuthRepository,
   routes?: RouteRepository,
-  { connectivity = { isOnline: async () => true }, now }: FakeExtras = {},
+  { connectivity = { isOnline: async () => true }, now, prospects }: FakeExtras = {},
 ): FakeAppData {
   const real = createAppData({
     store: createMemoryStore(),
@@ -54,6 +56,7 @@ export function createFakeAppData(
     ...real,
     auth: auth ?? real.auth,
     routes: routes ?? real.routes,
+    prospects: prospects ?? real.prospects,
     onUnauthorized: unauthorized.subscribe,
     emitUnauthorized: (token = sellerSession().token) => unauthorized.emit(token),
   }

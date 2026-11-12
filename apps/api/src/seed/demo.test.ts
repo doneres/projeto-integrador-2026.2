@@ -1,4 +1,4 @@
-import type { Customer, Route } from '@axis/contracts'
+import { type Customer, type Route, syncSnapshotSchema } from '@axis/contracts'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { type Harness, harness, passwords, withHarness } from '../../test/support/demo-harness'
@@ -220,6 +220,54 @@ describe('seedDemo', () => {
         expect(visit.checkInStatus).toBe('on_site')
         expect(visit.checkInAccuracyMeters).toBeLessThanOrEqual(50)
       }
+    })
+  })
+
+  describe('snapshot do Vendedor (contrato com o seed)', () => {
+    const snapshotOf = async (registration: string) => {
+      const response = await h.get(registration, '/v1/sync/snapshot')
+      expect(response.statusCode, `snapshot de ${registration}`).toBe(200)
+      return syncSnapshotSchema.parse(response.json())
+    }
+
+    it('cada Vendedor de teste recebe a rota de hoje e a de amanhã, com os Clientes, e o raio', async () => {
+      for (const registration of [SHOWCASE, ...TEST_SELLERS]) {
+        const snapshot = await snapshotOf(registration)
+        expect(snapshot.routes.map((route) => route.date)).toEqual([TODAY, TOMORROW])
+        expect(snapshot.checkinRadiusMeters).toBe(100)
+        for (const [index, date] of [TODAY, TOMORROW].entries()) {
+          const expected = await h.routeOn(registration, date)
+          expect(snapshot.routes[index]).toEqual(expected)
+        }
+      }
+    })
+
+    it('não traz Cliente nem Prospecção de outra Equipe nem de outro Vendedor', async () => {
+      for (const registration of [SHOWCASE, ...TEST_SELLERS]) {
+        const { user } = await h.sessionOf(registration)
+        const snapshot = await snapshotOf(registration)
+        for (const route of snapshot.routes) {
+          expect(route.sellerId).toBe(user.id)
+          for (const { customer } of route.visits) {
+            expect(customer.coordinatorId).toBe(user.coordinatorId)
+          }
+        }
+        for (const prospect of snapshot.prospects) {
+          expect(prospect.createdById).toBe(user.id)
+          expect(prospect.origin).toBe('prospect')
+        }
+      }
+    })
+
+    it('as Prospecções vêm com o estado e, se Rejeitada, o motivo', async () => {
+      const showcase = await snapshotOf(SHOWCASE)
+      expect(showcase.prospects.map((p) => p.status).sort()).toEqual(['active', 'pending_approval'])
+
+      const ana = await snapshotOf('2002')
+      expect(ana.prospects.map((p) => [p.status, p.rejectionReason]).sort()).toEqual([
+        ['pending_approval', null],
+        ['rejected', 'Fora da área atendida pela Equipe'],
+      ])
     })
   })
 

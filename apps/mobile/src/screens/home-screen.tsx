@@ -1,3 +1,4 @@
+import { router } from 'expo-router'
 import { useEffect } from 'react'
 import { AccessibilityInfo, ActivityIndicator, ScrollView, Text, View } from 'react-native'
 import { Button } from '@/components/button'
@@ -79,7 +80,14 @@ export function HomeScreen() {
         ? state.route.visits.map((visit) => <VisitRow key={visit.id} visit={visit} />)
         : null}
 
-      <View className="mt-4">
+      <View className="mt-4 gap-3">
+        <Button
+          title="Minhas prospecções"
+          variant="secondary"
+          accessibilityLabel="Ver minhas prospecções"
+          accessibilityRole="button"
+          onPress={() => router.push('/prospeccoes')}
+        />
         <Button
           title="Sair"
           variant="secondary"

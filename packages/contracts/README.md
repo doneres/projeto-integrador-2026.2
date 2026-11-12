@@ -76,6 +76,7 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | PUT | `/v1/goals/{sellerId}/{month}` | `goalInputSchema` | 200 `sellerScoreSummarySchema` · 401 · 403 · 404 · 422 `VALIDACAO` | contrato |
 | GET | `/v1/routes/today` | | 200 `routeDetailSchema` · 403 · 404 `SEM_ROTA_HOJE` | na API |
 | GET | `/v1/routes/{id}` | | 200 `routeDetailSchema` · 403 · 404 | na API |
+| GET | `/v1/sync/snapshot` | | 200 `syncSnapshotSchema` · 401 · 403 | na API |
 | GET | `/v1/routes` | `routeFiltersSchema` (query) | 200 `pageOf(routeSchema)` · 403 | na API |
 | POST | `/v1/routes` | `createRouteBodySchema` | 201 `routeSchema` · 409 · 422 | contrato |
 | GET | `/v1/dashboard` | `dashboardFiltersSchema` (query: `date`) | 200 `dashboardSummarySchema` · 403 | contrato |

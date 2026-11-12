@@ -4,6 +4,7 @@ import { type Connectivity, deviceConnectivity } from '@/services/connectivity'
 import { getEnv } from '@/services/env'
 import { type KeyValueStore, secureStore } from '@/services/key-value-store'
 import { type AuthRepository, createAuthRepository } from './auth-repository'
+import { createProspectRepository, type ProspectRepository } from './prospect-repository'
 import { createRouteRepository, type RouteRepository } from './route-repository'
 import { createSessionRepository, type SessionRepository } from './session-repository'
 
@@ -30,6 +31,7 @@ export type AppData = {
   api: ApiClient
   auth: AuthRepository
   routes: RouteRepository
+  prospects: ProspectRepository
   sessions: SessionRepository
   apiUrl: ApiUrlSettings
   /** Rede do aparelho: decide se voltar ao app já vale uma nova leitura. */
@@ -71,6 +73,7 @@ export function createAppData({
     api,
     auth: createAuthRepository(api),
     routes: createRouteRepository(api),
+    prospects: createProspectRepository(api),
     sessions,
     apiUrl,
     connectivity,
