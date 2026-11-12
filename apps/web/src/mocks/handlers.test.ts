@@ -81,7 +81,7 @@ describe('API simulada segue o contrato', () => {
     const lista = await chamar(pageOf(customerSchema), '/v1/customers?page=1&perPage=10', {
       headers,
     })
-    expect(lista.corpo.total).toBe(5)
+    expect(lista.corpo.total).toBe(8)
 
     const primeiro = clientesMock[0]
     await chamar(customerSchema, `/v1/customers/${primeiro.id}`, { headers })
@@ -128,6 +128,70 @@ describe('API simulada segue o contrato', () => {
       body: JSON.stringify(novoCliente),
     })
     expect(status).toBe(403)
+  })
+
+  it('aprova prospecção pendente e rejeita com motivo (RF09, RN04)', async () => {
+    const coordHeaders = await entrar('gestor@axis.example')
+    const vendedorHeaders = await entrar('vendedor@axis.example')
+
+    // Lista pendentes
+    const pendentes = await chamar(
+      pageOf(customerSchema),
+      '/v1/customers?origin=prospect&status=pending_approval',
+      { headers: coordHeaders },
+    )
+    expect(pendentes.corpo.total).toBe(2)
+    const [primeiroPendente, segundoPendente] = pendentes.corpo.items
+
+    // Vendedor não pode aprovar
+    const negado = await chamar(problemaSchema, `/v1/customers/${primeiroPendente.id}/approval`, {
+      method: 'POST',
+      headers: vendedorHeaders,
+    })
+    expect(negado.status).toBe(403)
+
+    // Coordenador aprova o primeiro
+    const aprovado = await chamar(customerSchema, `/v1/customers/${primeiroPendente.id}/approval`, {
+      method: 'POST',
+      headers: coordHeaders,
+    })
+    expect(aprovado.status).toBe(200)
+    expect(aprovado.corpo.status).toBe('active')
+    expect(aprovado.corpo.approvedById).not.toBeNull()
+    expect(aprovado.corpo.approvedAt).not.toBeNull()
+
+    // Não pode aprovar de novo (409)
+    const repetido = await chamar(problemaSchema, `/v1/customers/${primeiroPendente.id}/approval`, {
+      method: 'POST',
+      headers: coordHeaders,
+    })
+    expect(repetido.status).toBe(409)
+
+    // Rejeição exige motivo não vazio (422)
+    const semMotivo = await chamar(
+      problemaSchema,
+      `/v1/customers/${segundoPendente.id}/rejection`,
+      {
+        method: 'POST',
+        headers: coordHeaders,
+        body: JSON.stringify({ reason: '   ' }),
+      },
+    )
+    expect(semMotivo.status).toBe(422)
+
+    // Coordenador rejeita com motivo válido
+    const rejeitado = await chamar(
+      customerSchema,
+      `/v1/customers/${segundoPendente.id}/rejection`,
+      {
+        method: 'POST',
+        headers: coordHeaders,
+        body: JSON.stringify({ reason: 'Fora do raio de cobertura da equipe' }),
+      },
+    )
+    expect(rejeitado.status).toBe(200)
+    expect(rejeitado.corpo.status).toBe('rejected')
+    expect(rejeitado.corpo.rejectionReason).toBe('Fora do raio de cobertura da equipe')
   })
 
   it('lista os vendedores da Equipe (#79)', async () => {

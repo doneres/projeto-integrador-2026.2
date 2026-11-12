@@ -7,6 +7,7 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { EmConstrucaoPage } from '../pages/EmConstrucaoPage'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { ProspeccoesPage } from '../pages/ProspeccoesPage'
 import { RotaDetalhePage } from '../pages/RotaDetalhePage'
 import { RotaNovaPage } from '../pages/RotaNovaPage'
 import { RotasPage } from '../pages/RotasPage'
@@ -32,7 +33,7 @@ export const router = createBrowserRouter([
       { path: 'rotas', element: <RotasPage />, handle: { titulo: 'Rotas' } },
       { path: 'rotas/nova', element: <RotaNovaPage />, handle: { titulo: 'Nova rota' } },
       { path: 'rotas/:id', element: <RotaDetalhePage />, handle: { titulo: 'Rota' } },
-      { path: 'prospeccoes', element: <EmConstrucaoPage />, handle: { titulo: 'Prospecções' } },
+      { path: 'prospeccoes', element: <ProspeccoesPage />, handle: { titulo: 'Prospecções' } },
       { path: 'metas', element: <EmConstrucaoPage />, handle: { titulo: 'Metas' } },
       { path: 'materiais', element: <EmConstrucaoPage />, handle: { titulo: 'Materiais de PDV' } },
       { path: 'usuarios', element: <EmConstrucaoPage />, handle: { titulo: 'Usuários' } },
