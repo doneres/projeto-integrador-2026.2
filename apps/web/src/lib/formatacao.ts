@@ -23,3 +23,10 @@ export function formatarTelefone(telefone: string): string {
   }
   return telefone
 }
+
+const MOEDA = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+/** Centavos (inteiro do contrato) → moeda em reais. Ex.: 184500 → R$ 1.845,00 */
+export function formatarMoeda(centavos: number): string {
+  return MOEDA.format(centavos / 100).replace(/\u00a0/g, ' ')
+}

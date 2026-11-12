@@ -5,6 +5,8 @@ import {
   customerFiltersSchema,
   customerInputSchema,
   customerStatusChangeSchema,
+  type DashboardSummary,
+  dashboardFiltersSchema,
   type ErroDeCampo,
   errosDeValidacao,
   loginBodySchema,
@@ -20,7 +22,16 @@ import {
   visitStatusOf,
 } from '@axis/contracts'
 import { delay, HttpResponse, http } from 'msw'
-import { clientesMock, rotasMock, SENHA_DEMO, usuariosMock, visitasMock } from './data'
+import { hojeEmSaoPaulo } from '../lib/datas'
+import {
+  clientesMock,
+  type PedidoSimulado,
+  pedidosMock,
+  rotasMock,
+  SENHA_DEMO,
+  usuariosMock,
+  visitasMock,
+} from './data'
 
 const DURACAO_DA_SESSAO_MS = 8 * 60 * 60 * 1000
 const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
@@ -29,6 +40,7 @@ const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
 let clientes: Customer[] = structuredClone(clientesMock)
 let rotas: Route[] = structuredClone(rotasMock)
 let visitas: Visit[] = structuredClone(visitasMock)
+const pedidos: PedidoSimulado[] = structuredClone(pedidosMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 
@@ -152,6 +164,67 @@ const rotaNaoEncontrada = () =>
 
 function validacao(erros: ErroDeCampo[]) {
   return problema(422, 'VALIDACAO', 'Dados inválidos', { erros })
+}
+
+/** Resumo consolidado do dia e faturamento do mês para o escopo do usuário (#40). */
+function resumoDoPainel(usuario: User, date: string): DashboardSummary {
+  const month = date.slice(0, 7)
+  const vendedores = usuariosMock
+    .filter(
+      (u) => u.role === 'seller' && (usuario.role === 'director' || u.coordinatorId === usuario.id),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const idsVendedores = new Set(vendedores.map((v) => v.id))
+
+  const rotasDoDia = rotas.filter((r) => r.date === date && idsVendedores.has(r.sellerId))
+  const rotaPorVendedor = new Map(rotasDoDia.map((r) => [r.sellerId, r.id]))
+
+  const totais = { planned: 0, completed: 0, inProgress: 0, notPerformed: 0, pending: 0 }
+
+  const visitsBySeller = vendedores.map((vendedor) => {
+    const rotaId = rotaPorVendedor.get(vendedor.id)
+    const visitasDoVendedor = rotaId ? visitas.filter((v) => v.routeId === rotaId) : []
+    const contagem = {
+      sellerId: vendedor.id,
+      sellerName: vendedor.name,
+      planned: visitasDoVendedor.length,
+      completed: 0,
+      inProgress: 0,
+      notPerformed: 0,
+    }
+    totais.planned += visitasDoVendedor.length
+    for (const v of visitasDoVendedor) {
+      const status = visitStatusOf(v)
+      if (status === 'completed') {
+        contagem.completed += 1
+        totais.completed += 1
+      } else if (status === 'in_progress') {
+        contagem.inProgress += 1
+        totais.inProgress += 1
+      } else if (status === 'not_performed') {
+        contagem.notPerformed += 1
+        totais.notPerformed += 1
+      } else {
+        totais.pending += 1
+      }
+    }
+    return contagem
+  })
+
+  const pedidosDoMes = pedidos.filter(
+    (p) =>
+      idsVendedores.has(p.sellerId) && hojeEmSaoPaulo(new Date(p.occurredAt)).startsWith(month),
+  )
+  const revenueCents = pedidosDoMes.reduce((soma, p) => soma + p.totalCents, 0)
+
+  return {
+    date,
+    month,
+    visits: totais,
+    revenueCents,
+    ordersCount: pedidosDoMes.length,
+    visitsBySeller,
+  }
 }
 
 // Cada handler imita um endpoint do contrato da API (/v1/...).
@@ -419,5 +492,24 @@ export const handlers = [
       ),
     ]
     return HttpResponse.json(detalhe(nova), { status: 201 })
+  }),
+
+  http.get('/v1/dashboard', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator' && usuario.role !== 'director') {
+      return semPermissao()
+    }
+    const consulta = dashboardFiltersSchema.safeParse(
+      Object.fromEntries(new URL(request.url).searchParams),
+    )
+    if (!consulta.success) {
+      return validacao(errosDeValidacao(consulta.error))
+    }
+    const date = consulta.data.date ?? hojeEmSaoPaulo()
+    return HttpResponse.json(resumoDoPainel(usuario, date))
   }),
 ]

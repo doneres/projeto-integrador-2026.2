@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatarCep, formatarDocumento, formatarTelefone } from './formatacao'
+import { formatarCep, formatarDocumento, formatarMoeda, formatarTelefone } from './formatacao'
 
 describe('formatarDocumento', () => {
   it('formata CPF', () => {
@@ -22,5 +22,12 @@ describe('formatarTelefone', () => {
   it('formata celular e fixo', () => {
     expect(formatarTelefone('62999990000')).toBe('(62) 99999-0000')
     expect(formatarTelefone('6233330002')).toBe('(62) 3333-0002')
+  })
+})
+
+describe('formatarMoeda', () => {
+  it('converte centavos para reais em pt-BR', () => {
+    expect(formatarMoeda(0)).toBe('R$ 0,00')
+    expect(formatarMoeda(184500)).toBe('R$ 1.845,00')
   })
 })

@@ -20,3 +20,11 @@ const HORA = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short', timeZone: FU
 export function formatarHora(instante: string): string {
   return HORA.format(new Date(instante))
 }
+
+const MES = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+/** 2026-11 → novembro de 2026 */
+export function formatarMes(mes: string): string {
+  const [ano, numero] = mes.split('-')
+  return MES.format(new Date(Date.UTC(Number(ano), Number(numero) - 1, 1)))
+}

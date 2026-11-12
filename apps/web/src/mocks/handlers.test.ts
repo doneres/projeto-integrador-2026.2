@@ -1,5 +1,6 @@
 import {
   customerSchema,
+  dashboardSummarySchema,
   pageOf,
   problemaSchema,
   routeDetailSchema,
@@ -51,7 +52,7 @@ async function entrar(identifier: string) {
 const novoCliente = {
   legalName: 'Empório Teste Ltda',
   tradeName: 'Empório Teste',
-  document: '11222333000181',
+  document: '52998224725',
   phone: '62999990009',
   contactName: 'Rita',
   zipCode: '74000000',
@@ -80,7 +81,7 @@ describe('API simulada segue o contrato', () => {
     const lista = await chamar(pageOf(customerSchema), '/v1/customers?page=1&perPage=10', {
       headers,
     })
-    expect(lista.corpo.total).toBe(clientesMock.length)
+    expect(lista.corpo.total).toBe(5)
 
     const primeiro = clientesMock[0]
     await chamar(customerSchema, `/v1/customers/${primeiro.id}`, { headers })
@@ -194,5 +195,45 @@ describe('API simulada segue o contrato', () => {
     })
     expect(status).toBe(422)
     expect(corpo.erros?.[0]?.campo).toBe('customerIds')
+  })
+
+  it('resume o dashboard por perfil: Coordenador vê a Equipe e Diretor vê todas (#40)', async () => {
+    const coordenadora = await entrar('gestor@axis.example')
+    const painelCoord = await chamar(
+      dashboardSummarySchema,
+      `/v1/dashboard?date=${hojeEmSaoPaulo()}`,
+      { headers: coordenadora },
+    )
+    expect(painelCoord.corpo.visitsBySeller.map((v) => v.sellerName)).toEqual([
+      'Bruno Exemplo',
+      'Diego Exemplo',
+    ])
+    expect(painelCoord.corpo.visits).toEqual({
+      planned: 6,
+      completed: 1,
+      inProgress: 1,
+      notPerformed: 1,
+      pending: 3,
+    })
+    expect(painelCoord.corpo.ordersCount).toBeGreaterThanOrEqual(1)
+    expect(painelCoord.corpo.revenueCents).toBeGreaterThanOrEqual(64500)
+
+    const diretora = await entrar('diretor@axis.example')
+    const painelDir = await chamar(
+      dashboardSummarySchema,
+      `/v1/dashboard?date=${hojeEmSaoPaulo()}`,
+      { headers: diretora },
+    )
+    expect(painelDir.corpo.visitsBySeller.map((v) => v.sellerName)).toEqual([
+      'Bruno Exemplo',
+      'Diego Exemplo',
+      'Lia Modelo',
+    ])
+    expect(painelDir.corpo.visits.planned).toBe(7)
+    expect(painelDir.corpo.visits.completed).toBe(2)
+
+    const admin = await entrar('administrador@axis.example')
+    const negado = await chamar(problemaSchema, '/v1/dashboard', { headers: admin })
+    expect(negado.status).toBe(403)
   })
 })
