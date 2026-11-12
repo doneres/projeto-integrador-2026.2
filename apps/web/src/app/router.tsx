@@ -6,6 +6,7 @@ import { ClientesPage } from '../pages/ClientesPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { EmConstrucaoPage } from '../pages/EmConstrucaoPage'
 import { LoginPage } from '../pages/LoginPage'
+import { MateriaisPage } from '../pages/MateriaisPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { ProdutosPage } from '../pages/ProdutosPage'
 import { ProspeccoesPage } from '../pages/ProspeccoesPage'
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
       { path: 'prospeccoes', element: <ProspeccoesPage />, handle: { titulo: 'Prospecções' } },
       { path: 'produtos', element: <ProdutosPage />, handle: { titulo: 'Produtos' } },
       { path: 'metas', element: <EmConstrucaoPage />, handle: { titulo: 'Metas' } },
-      { path: 'materiais', element: <EmConstrucaoPage />, handle: { titulo: 'Materiais de PDV' } },
+      { path: 'materiais', element: <MateriaisPage />, handle: { titulo: 'Materiais de PDV' } },
       { path: 'usuarios', element: <EmConstrucaoPage />, handle: { titulo: 'Usuários' } },
     ],
   },

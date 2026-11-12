@@ -1,7 +1,9 @@
 import {
   customerSchema,
   dashboardSummarySchema,
+  loanDetailSchema,
   pageOf,
+  posMaterialSchema,
   problemaSchema,
   productSchema,
   routeDetailSchema,
@@ -394,5 +396,178 @@ describe('API simulada segue o contrato', () => {
     })
     expect(reativado.status).toBe(200)
     expect(reativado.corpo.active).toBe(true)
+  })
+
+  it('permite listar, cadastrar, editar, inativar e excluir materiais de PDV com regra de comodato ativo (#42)', async () => {
+    const adminHeaders = await entrar('administrador@axis.example')
+    const gestorHeaders = await entrar('gestor@axis.example')
+
+    // Listagem pública para autenticados
+    const listagem = await chamar(pageOf(posMaterialSchema), '/v1/pos-materials', {
+      headers: gestorHeaders,
+    })
+    expect(listagem.status).toBe(200)
+    expect(listagem.corpo.items.length).toBeGreaterThanOrEqual(1)
+
+    // Coordenador não pode cadastrar material (403)
+    const negado = await chamar(problemaSchema, '/v1/pos-materials', {
+      method: 'POST',
+      headers: gestorHeaders,
+      body: JSON.stringify({
+        name: 'Geladeira Comercial 450L',
+        category: 'Geladeiras',
+      }),
+    })
+    expect(negado.status).toBe(403)
+
+    // Administrador cadastra novo material
+    const novoMaterial = {
+      name: 'Geladeira Comercial 450L',
+      category: 'Geladeiras',
+    }
+    const criado = await chamar(posMaterialSchema, '/v1/pos-materials', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(novoMaterial),
+    })
+    expect(criado.status).toBe(201)
+    expect(criado.corpo.name).toBe('Geladeira Comercial 450L')
+    expect(criado.corpo.active).toBe(true)
+
+    // Administrador edita material
+    const editado = await chamar(posMaterialSchema, `/v1/pos-materials/${criado.corpo.id}`, {
+      method: 'PUT',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        name: 'Geladeira Comercial Frost Free 450L',
+        category: 'Geladeiras Especiais',
+      }),
+    })
+    expect(editado.status).toBe(200)
+    expect(editado.corpo.name).toBe('Geladeira Comercial Frost Free 450L')
+
+    // Administrador inativa material
+    const inativado = await chamar(
+      posMaterialSchema,
+      `/v1/pos-materials/${criado.corpo.id}/status`,
+      {
+        method: 'PATCH',
+        headers: adminHeaders,
+        body: JSON.stringify({ active: false }),
+      },
+    )
+    expect(inativado.status).toBe(200)
+    expect(inativado.corpo.active).toBe(false)
+
+    // Bloqueio de exclusão quando há comodato ativo vinculado (409 MATERIAL_EM_USO)
+    // O material 0192f4a0-0000-7000-8000-000000000f01 tem o comodato ativo 0192f4a0-0000-7000-8000-000000000c01
+    const bloqueado = await chamar(
+      problemaSchema,
+      '/v1/pos-materials/0192f4a0-0000-7000-8000-000000000f01',
+      {
+        method: 'DELETE',
+        headers: adminHeaders,
+      },
+    )
+    expect(bloqueado.status).toBe(409)
+    expect(bloqueado.corpo.codigo).toBe('MATERIAL_EM_USO')
+
+    // Exclusão permitida para material sem comodatos ativos (204)
+    const respostaDelete = await fetch(`${BASE}/v1/pos-materials/${criado.corpo.id}`, {
+      method: 'DELETE',
+      headers: adminHeaders,
+    })
+    expect(respostaDelete.status).toBe(204)
+  })
+
+  it('controla comodatos por cliente com escopo por perfil e encerramento sem exclusão física (#42)', async () => {
+    const adminHeaders = await entrar('administrador@axis.example')
+    const gestorHeaders = await entrar('gestor@axis.example')
+
+    // Coordenador lista comodatos (apenas da sua equipe)
+    const listaGestor = await chamar(pageOf(loanDetailSchema), '/v1/loans', {
+      headers: gestorHeaders,
+    })
+    expect(listaGestor.status).toBe(200)
+    // Nenhum comodato da lista do gestor pertence ao cliente de outro coordenador
+    expect(
+      listaGestor.corpo.items.some((l) => l.customerId === '0192f4a0-0000-7000-8000-000000000006'),
+    ).toBe(false)
+
+    // Administrador lista todos os comodatos
+    const listaAdmin = await chamar(pageOf(loanDetailSchema), '/v1/loans', {
+      headers: adminHeaders,
+    })
+    expect(listaAdmin.status).toBe(200)
+    expect(
+      listaAdmin.corpo.items.some((l) => l.customerId === '0192f4a0-0000-7000-8000-000000000006'),
+    ).toBe(true)
+
+    // Coordenador não pode cadastrar comodato (403)
+    const novoComodato = {
+      materialId: '0192f4a0-0000-7000-8000-000000000f03',
+      customerId: '0192f4a0-0000-7000-8000-000000000001',
+      serialNumber: 'SN-TEST-8899',
+      installedAt: '2026-11-01',
+    }
+    const negadoCriacao = await chamar(problemaSchema, '/v1/loans', {
+      method: 'POST',
+      headers: gestorHeaders,
+      body: JSON.stringify(novoComodato),
+    })
+    expect(negadoCriacao.status).toBe(403)
+
+    // Administrador cadastra novo comodato
+    const criado = await chamar(loanDetailSchema, '/v1/loans', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(novoComodato),
+    })
+    expect(criado.status).toBe(201)
+    expect(criado.corpo.serialNumber).toBe('SN-TEST-8899')
+    expect(criado.corpo.endedAt).toBeNull()
+
+    // Recusa mesmo patrimônio ativo (409)
+    const duplicado = await chamar(problemaSchema, '/v1/loans', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(novoComodato),
+    })
+    expect(duplicado.status).toBe(409)
+    expect(duplicado.corpo.codigo).toBe('NUMERO_SERIE_EM_USO')
+
+    // Coordenador não pode encerrar comodato (403)
+    const negadoEncerramento = await chamar(problemaSchema, `/v1/loans/${criado.corpo.id}/end`, {
+      method: 'PATCH',
+      headers: gestorHeaders,
+      body: JSON.stringify({ endedAt: '2026-11-10' }),
+    })
+    expect(negadoEncerramento.status).toBe(403)
+
+    // Recusa data de encerramento anterior à data de instalação (422)
+    const dataInvalida = await chamar(problemaSchema, `/v1/loans/${criado.corpo.id}/end`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ endedAt: '2026-10-01' }),
+    })
+    expect(dataInvalida.status).toBe(422)
+
+    // Administrador encerra comodato
+    const encerrado = await chamar(loanDetailSchema, `/v1/loans/${criado.corpo.id}/end`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ endedAt: '2026-11-10' }),
+    })
+    expect(encerrado.status).toBe(200)
+    expect(encerrado.corpo.endedAt).toBe('2026-11-10')
+
+    // Tentar encerrar novamente recusa com 409 TRANSICAO_INVALIDA
+    const reencerrado = await chamar(problemaSchema, `/v1/loans/${criado.corpo.id}/end`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ endedAt: '2026-11-11' }),
+    })
+    expect(reencerrado.status).toBe(409)
+    expect(reencerrado.corpo.codigo).toBe('TRANSICAO_INVALIDA')
   })
 })
