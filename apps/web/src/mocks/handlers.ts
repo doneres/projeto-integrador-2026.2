@@ -13,6 +13,10 @@ import {
   loginBodySchema,
   normalizarDocumento,
   type Page,
+  type Product,
+  productFiltersSchema,
+  productInputSchema,
+  productStatusChangeSchema,
   type Route,
   type RouteDetail,
   routeFiltersSchema,
@@ -28,6 +32,7 @@ import {
   clientesMock,
   type PedidoSimulado,
   pedidosMock,
+  produtosMock,
   rotasMock,
   SENHA_DEMO,
   usuariosMock,
@@ -41,6 +46,7 @@ const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
 let clientes: Customer[] = structuredClone(clientesMock)
 let rotas: Route[] = structuredClone(rotasMock)
 let visitas: Visit[] = structuredClone(visitasMock)
+let produtos: Product[] = structuredClone(produtosMock)
 const pedidos: PedidoSimulado[] = structuredClone(pedidosMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
@@ -118,6 +124,11 @@ function documentoEmUso(documento: string, idIgnorado?: string): boolean {
   return clientes.some(
     (c) => c.document === documento && c.status !== 'rejected' && c.id !== idIgnorado,
   )
+}
+
+function skuEmUso(sku: string, idIgnorado?: string): boolean {
+  const normalizado = sku.trim().toUpperCase()
+  return produtos.some((p) => p.sku.toUpperCase() === normalizado && p.id !== idIgnorado)
 }
 
 function pagina<T>(itens: T[], page: number, perPage: number): Page<T> {
@@ -575,5 +586,158 @@ export const handlers = [
     }
     const date = consulta.data.date ?? hojeEmSaoPaulo()
     return HttpResponse.json(resumoDoPainel(usuario, date))
+  }),
+
+  // Catálogo de produtos (RF20, #44): Gestão de itens comercializados pelo Administrador.
+  http.get('/v1/products', async ({ request }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const params = Object.fromEntries(new URL(request.url).searchParams)
+    const consulta = productFiltersSchema.safeParse(params)
+    if (!consulta.success) {
+      return validacao(errosDeValidacao(consulta.error))
+    }
+    const { search, category, active, sortBy, order, page: numPagina, perPage } = consulta.data
+    const termo = search?.trim().toLowerCase()
+    const direcao = order === 'desc' ? -1 : 1
+
+    const filtrados = produtos
+      .filter((p) => {
+        if (active !== undefined && p.active !== active) return false
+        if (category && p.category.toLowerCase() !== category.trim().toLowerCase()) return false
+        if (termo) {
+          const casouNome = p.name.toLowerCase().includes(termo)
+          const casouSku = p.sku.toLowerCase().includes(termo)
+          const casouCategoria = p.category.toLowerCase().includes(termo)
+          if (!casouNome && !casouSku && !casouCategoria) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        const valA = a[sortBy]
+        const valB = b[sortBy]
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return direcao * valA.localeCompare(valB, 'pt-BR') || a.id.localeCompare(b.id)
+        }
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return direcao * (valA - valB) || a.id.localeCompare(b.id)
+        }
+        return 0
+      })
+
+    return HttpResponse.json(pagina(filtrados, numPagina, perPage))
+  }),
+
+  http.get('/v1/products/:id', async ({ request, params }) => {
+    await delay(150)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const encontrado = produtos.find((p) => p.id === String(params.id))
+    if (!encontrado) {
+      return problema(404, 'NAO_ENCONTRADO', 'Produto não encontrado')
+    }
+    return HttpResponse.json(encontrado)
+  }),
+
+  http.post('/v1/products', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = productInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (skuEmUso(corpo.data.sku)) {
+      return problema(409, 'SKU_JA_CADASTRADO', 'SKU já cadastrado', {
+        detail: 'Já existe um produto com este SKU no catálogo.',
+      })
+    }
+    const instante = agora()
+    const novo: Product = {
+      id: crypto.randomUUID(),
+      sku: corpo.data.sku.trim().toUpperCase(),
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      unitPriceCents: corpo.data.unitPriceCents,
+      referenceStock: corpo.data.referenceStock,
+      imageUrl: corpo.data.imageUrl || null,
+      active: true,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    produtos = [...produtos, novo]
+    return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.put('/v1/products/:id', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = produtos.find((p) => p.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Produto não encontrado')
+    }
+    const corpo = productInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (skuEmUso(corpo.data.sku, atual.id)) {
+      return problema(409, 'SKU_JA_CADASTRADO', 'SKU já cadastrado', {
+        detail: 'Já existe outro produto com este SKU no catálogo.',
+      })
+    }
+    const atualizado: Product = {
+      ...atual,
+      sku: corpo.data.sku.trim().toUpperCase(),
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      unitPriceCents: corpo.data.unitPriceCents,
+      referenceStock: corpo.data.referenceStock,
+      imageUrl: corpo.data.imageUrl || null,
+      updatedAt: agora(),
+    }
+    produtos = produtos.map((p) => (p.id === atual.id ? atualizado : p))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.patch('/v1/products/:id/status', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = produtos.find((p) => p.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Produto não encontrado')
+    }
+    const corpo = productStatusChangeSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const atualizado: Product = {
+      ...atual,
+      active: corpo.data.active,
+      updatedAt: agora(),
+    }
+    produtos = produtos.map((p) => (p.id === atual.id ? atualizado : p))
+    return HttpResponse.json(atualizado)
   }),
 ]

@@ -3,6 +3,7 @@ import {
   dashboardSummarySchema,
   pageOf,
   problemaSchema,
+  productSchema,
   routeDetailSchema,
   routeSchema,
   sessionSchema,
@@ -299,5 +300,99 @@ describe('API simulada segue o contrato', () => {
     const admin = await entrar('administrador@axis.example')
     const negado = await chamar(problemaSchema, '/v1/dashboard', { headers: admin })
     expect(negado.status).toBe(403)
+  })
+
+  it('lista, busca, cadastra, edita e inativa produtos do catálogo (RF20, #44)', async () => {
+    const adminHeaders = await entrar('administrador@axis.example')
+    const coordHeaders = await entrar('gestor@axis.example')
+
+    // Listagem geral de produtos
+    const lista = await chamar(pageOf(productSchema), '/v1/products', { headers: adminHeaders })
+    expect(lista.corpo.total).toBe(8)
+
+    // Filtro por categoria
+    const cervejas = await chamar(pageOf(productSchema), '/v1/products?category=Cervejas', {
+      headers: coordHeaders,
+    })
+    expect(cervejas.corpo.total).toBe(2)
+
+    // Busca por termo (nome ou SKU)
+    const busca = await chamar(pageOf(productSchema), '/v1/products?search=cola', {
+      headers: coordHeaders,
+    })
+    expect(busca.corpo.total).toBe(1)
+    expect(busca.corpo.items[0].sku).toBe('REFR-COL-2000')
+
+    // Coordenador não pode cadastrar produto (apenas Administrador)
+    const negado = await chamar(problemaSchema, '/v1/products', {
+      method: 'POST',
+      headers: coordHeaders,
+      body: JSON.stringify({
+        sku: 'SUCO-LAR-1000',
+        name: 'Suco de Laranja 1L',
+        category: 'Sucos',
+        unitPriceCents: 950,
+        referenceStock: 100,
+      }),
+    })
+    expect(negado.status).toBe(403)
+
+    // Administrador cadastra novo produto
+    const novoProduto = {
+      sku: 'SUCO-LAR-1000',
+      name: 'Suco de Laranja 1L',
+      category: 'Sucos',
+      unitPriceCents: 950,
+      referenceStock: 100,
+    }
+    const criado = await chamar(productSchema, '/v1/products', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(novoProduto),
+    })
+    expect(criado.status).toBe(201)
+    expect(criado.corpo.sku).toBe('SUCO-LAR-1000')
+    expect(criado.corpo.active).toBe(true)
+
+    // Recusa SKU duplicado (409)
+    const duplicado = await chamar(problemaSchema, '/v1/products', {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify(novoProduto),
+    })
+    expect(duplicado.status).toBe(409)
+    expect(duplicado.corpo.codigo).toBe('SKU_JA_CADASTRADO')
+
+    // Administrador edita produto
+    const editado = await chamar(productSchema, `/v1/products/${criado.corpo.id}`, {
+      method: 'PUT',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        ...novoProduto,
+        name: 'Suco de Laranja Integral 1L',
+        unitPriceCents: 990,
+      }),
+    })
+    expect(editado.status).toBe(200)
+    expect(editado.corpo.name).toBe('Suco de Laranja Integral 1L')
+    expect(editado.corpo.unitPriceCents).toBe(990)
+
+    // Administrador inativa produto
+    const inativado = await chamar(productSchema, `/v1/products/${criado.corpo.id}/status`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ active: false }),
+    })
+    expect(inativado.status).toBe(200)
+    expect(inativado.corpo.active).toBe(false)
+
+    // Reativa produto
+    const reativado = await chamar(productSchema, `/v1/products/${criado.corpo.id}/status`, {
+      method: 'PATCH',
+      headers: adminHeaders,
+      body: JSON.stringify({ active: true }),
+    })
+    expect(reativado.status).toBe(200)
+    expect(reativado.corpo.active).toBe(true)
   })
 })

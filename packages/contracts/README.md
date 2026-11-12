@@ -52,6 +52,11 @@ Rotas e schemas em inglês (ADR 0001). Todas, menos o login e o `/health`, exige
 | PATCH | `/v1/customers/{id}/status` | `customerStatusChangeSchema` | 200 `customerSchema` · 403 · 404 · 409 `TRANSICAO_INVALIDA` | na API |
 | POST | `/v1/customers/{id}/approval` | | 200 `customerSchema` · 403 · 404 · 409 `TRANSICAO_INVALIDA` | na API |
 | POST | `/v1/customers/{id}/rejection` | `customerRejectionSchema` | 200 `customerSchema` · 403 · 404 · 409 `TRANSICAO_INVALIDA` · 422 `VALIDACAO` | na API |
+| GET | `/v1/products` | `productFiltersSchema` (query: busca, categoria, active, ordenação) | 200 `pageOf(productSchema)` · 401 | contrato |
+| GET | `/v1/products/{id}` | | 200 `productSchema` · 404 `NAO_ENCONTRADO` | contrato |
+| POST | `/v1/products` | `productInputSchema` | 201 `productSchema` · 403 · 409 `SKU_JA_CADASTRADO` · 422 `VALIDACAO` | contrato |
+| PUT | `/v1/products/{id}` | `productInputSchema` | 200 `productSchema` · 403 · 404 · 409 `SKU_JA_CADASTRADO` · 422 | contrato |
+| PATCH | `/v1/products/{id}/status` | `productStatusChangeSchema` | 200 `productSchema` · 403 · 404 · 422 | contrato |
 | GET | `/v1/routes/today` | | 200 `routeDetailSchema` · 403 · 404 `SEM_ROTA_HOJE` | na API |
 | GET | `/v1/routes/{id}` | | 200 `routeDetailSchema` · 403 · 404 | na API |
 | GET | `/v1/routes` | `routeFiltersSchema` (query) | 200 `pageOf(routeSchema)` · 403 | na API |
@@ -86,6 +91,7 @@ O contrato usa só nomes em inglês (ADR 0001), conforme o [modelo de dados](../
 |---|---|
 | Usuário e login | `user.ts`: `roleSchema`, `PANEL_ROLES`, `userSchema`, `loginBodySchema`, `sessionSchema` |
 | Cliente | `customer.ts`: `customerSchema`, `customerInputSchema`, `customerStatusChangeSchema`, `customerRejectionSchema`, `customerFiltersSchema` |
+| Produto | `product.ts`: `productSchema`, `productInputSchema`, `productStatusChangeSchema`, `productSortFieldSchema`, `productFiltersSchema` |
 | Rota | `route.ts`: `routeSchema`, `createRouteBodySchema`, `routeDetailSchema`, `routeFiltersSchema` |
 | Dashboard | `dashboard.ts`: `dashboardFiltersSchema`, `dashboardSellerVisitsSchema`, `dashboardSummarySchema` |
 | Visita | `visit.ts`: `visitSchema`, `checkInBodySchema`, `checkOutBodySchema`, `visitStatusOf` (estado derivado) |
