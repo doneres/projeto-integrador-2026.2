@@ -68,6 +68,14 @@ No Expo Go, `localhost` aponta para o próprio celular. Use o **IP da sua máqui
 - `ProspectRepository` (`src/repositories/prospect-repository.ts`) lê `GET /v1/sync/snapshot` e fica com as Prospecções; na onda do offline (#27) o app lê do banco local, que o snapshot alimenta, sem mudar a tela. Prospecção não entra em rota nem recebe Pedido (RN04), por isso a lista é própria.
 - Nos testes, `createFakeAppData(auth, routes, { prospects })` aceita um repositório de Prospecções falso e `test/prospect-fixtures.ts` monta Prospecções nos estados.
 
+## Score do mês (RF25)
+
+- `ScoreRepository` (`src/repositories/score-repository.ts`) lê `GET /v1/goals`: o servidor calcula o realizado e o Score na leitura (RN02) e o app só mostra. O repositório guarda a última leitura bem-sucedida em cache, **por Vendedor** (o Score de um não aparece para outro no mesmo aparelho).
+- `useSellerScore` (`src/hooks/use-seller-score.ts`) é o que a Tela de Metas usa. Relê o Score em três momentos e **nunca em intervalo**: ao abrir a tela (o cache aparece na hora, enquanto a leitura nova não chega), ao voltar ao foreground **com rede** e **quando a fila de envio esvazia com sucesso**. Com a fila pendente ou em erro não relê. Uma leitura que falha não apaga o valor da tela: avisa e mantém a hora da última que deu certo.
+- A fila esvaziando durante uma leitura em andamento descarta a leitura antiga (ela pode ter saído antes de o servidor receber o Pedido) e começa outra.
+- **Fila de envio (`src/services/send-queue.ts`):** a outbox ainda não existe, então o app usa uma fila em memória que fica sempre `idle`. Quando a outbox (#27) vier, ela publica o estado por `SendQueue` (`idle`, `pending`, `error`), passando por `pending` enquanto houver operação e só voltando a `idle` quando a última for aceita pelo servidor (`wasDrained`: só `pending → idle` conta). Passar o `sendQueue` real em `createAppData` basta; o hook não muda.
+- Nos testes, `createFakeAppData(auth, routes, { scores, sendQueue })` aceita um repositório de Score falso e uma fila controlada por `createSendQueue().setStatus(...)`; `test/score-fixtures.ts` monta o Score.
+
 ## Scripts
 
 Dentro de `apps/mobile` (ou na raiz, com `pnpm --filter @axis/mobile <script>`):
