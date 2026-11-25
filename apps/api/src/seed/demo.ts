@@ -23,6 +23,7 @@ import {
   type Team,
 } from './demo-data'
 import { type HistorySeller, seedHistory } from './history'
+import { seedOrders } from './orders'
 
 export type DemoOptions = {
   passwords: SeedPasswords
@@ -170,8 +171,12 @@ export async function seedDemo(db: Database, { passwords, now, demoLocation }: D
     customers: [...customerByDocument.values()],
   })
 
+  const orders = await seedOrders(db, now)
+
   return {
     ...report,
+    productsCreated: orders.productsCreated,
+    ordersCreated: orders.ordersCreated,
     customersCreated: missing.length,
     routesCreated,
     historyRoutesCreated: history.routesCreated,

@@ -240,3 +240,64 @@ export const visits = pgTable(
     ),
   ],
 )
+
+/** Catálogo do Administrador. O preço atual muda; o dos Pedidos já emitidos fica congelado. */
+export const products = pgTable(
+  'product',
+  {
+    id: uuid().primaryKey(),
+    sku: text().notNull().unique(),
+    name: text().notNull(),
+    category: text().notNull(),
+    unitPriceCents: integer().notNull(),
+    /** Só informativo: o Pedido não baixa o estoque. */
+    referenceStock: integer().notNull().default(0),
+    imageUrl: text(),
+    active: boolean().notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [
+    check('product_price_not_negative', sql`${table.unitPriceCents} >= 0`),
+    check('product_stock_not_negative', sql`${table.referenceStock} >= 0`),
+  ],
+)
+
+/** Compra de reposição emitida em uma Visita. Sem status, cancelamento nem desconto. */
+export const salesOrders = pgTable(
+  'sales_order',
+  {
+    id: uuid().primaryKey(),
+    visitId: uuid()
+      .notNull()
+      .references(() => visits.id),
+    /** Relógio do aparelho; define o mês do faturamento (America/Sao_Paulo). */
+    occurredAt: timestamp({ withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index('sales_order_visit_idx').on(table.visitId),
+    index('sales_order_occurred_at_idx').on(table.occurredAt),
+  ],
+)
+
+export const orderItems = pgTable(
+  'order_item',
+  {
+    id: uuid().primaryKey(),
+    orderId: uuid()
+      .notNull()
+      .references(() => salesOrders.id, { onDelete: 'cascade' }),
+    productId: uuid()
+      .notNull()
+      .references(() => products.id),
+    quantity: integer().notNull(),
+    /** Copiado do Produto na emissão. */
+    unitPriceCents: integer().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique('order_item_order_product_unique').on(table.orderId, table.productId),
+    check('order_item_quantity_positive', sql`${table.quantity} >= 1`),
+    check('order_item_price_not_negative', sql`${table.unitPriceCents} >= 0`),
+  ],
+)

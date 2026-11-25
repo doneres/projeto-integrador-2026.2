@@ -25,6 +25,8 @@ async function main() {
       printAccounts(report)
       console.log(`Clientes criados: ${report.customersCreated}`)
       console.log(`Rotas criadas: ${report.routesCreated}`)
+      console.log(`Produtos criados: ${report.productsCreated}`)
+      console.log(`Pedidos criados: ${report.ordersCreated}`)
       console.log(
         `Histórico: ${report.historyRoutesCreated} rotas e ${report.historyVisitsCreated} Visitas criadas`,
       )
