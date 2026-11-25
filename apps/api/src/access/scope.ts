@@ -58,3 +58,18 @@ export function customerScope(db: Database, user: User): SQL | undefined {
       throw noPermission()
   }
 }
+
+/**
+ * Condição que limita uma consulta de `user` ao que o perfil pode listar: o Coordenador vê a sua
+ * Equipe (ele e os Vendedores dele) e o Diretor todos. Vendedor e Administrador não listam.
+ */
+export function userScope(user: User): SQL | undefined {
+  switch (user.role) {
+    case 'coordinator':
+      return or(eq(users.id, user.id), eq(users.coordinatorId, user.id))
+    case 'director':
+      return undefined
+    default:
+      throw noPermission()
+  }
+}

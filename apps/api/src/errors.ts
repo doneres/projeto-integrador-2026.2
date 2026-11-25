@@ -20,12 +20,15 @@ const TITLES: Record<number, string> = {
 export class ApiError extends Error {
   readonly status: number
   readonly codigo: string
+  /** Erros por campo, como os da validação do corpo (422). */
+  readonly erros: ErroDeCampo[] | undefined
 
-  constructor(status: number, codigo: string, message: string) {
+  constructor(status: number, codigo: string, message: string, erros?: ErroDeCampo[]) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.codigo = codigo
+    this.erros = erros
   }
 }
 
@@ -69,6 +72,7 @@ export function registerErrorHandling(app: FastifyInstance) {
         status: error.status,
         detail: error.message,
         codigo: error.codigo,
+        ...(error.erros ? { erros: error.erros } : {}),
       }
       // Só o token ausente ou inválido desafia com Bearer; a falha do login não.
       if (error.codigo === 'NAO_AUTENTICADO') reply.header('WWW-Authenticate', 'Bearer')
