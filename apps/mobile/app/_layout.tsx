@@ -14,6 +14,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={state.status === 'signedIn'}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="prospeccoes" />
       </Stack.Protected>
       <Stack.Protected guard={state.status === 'signedOut'}>
         <Stack.Screen name="login" />

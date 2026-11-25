@@ -5,10 +5,10 @@ import { type Coordinates, distanceInMeters } from '../geo/distance'
 // execução e a chave natural (o documento) sempre encontra a linha criada antes.
 // Ao acrescentar Clientes, use o fim das listas: mudar a ordem muda os documentos já semeados.
 
-const SEED = 20261106
+export const SEED = 20261106
 
 /** Gerador mulberry32: pequeno, com semente e sempre com a mesma sequência. */
-function randomFrom(seed: number) {
+export function randomFrom(seed: number) {
   let state = seed
   return () => {
     state = (state + 0x6d2b79f5) | 0

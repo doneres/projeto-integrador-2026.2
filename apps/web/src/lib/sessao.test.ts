@@ -19,6 +19,7 @@ const sessao: Session = {
     registration: '1001',
     role: 'coordinator',
     coordinatorId: null,
+    active: true,
   },
 }
 

@@ -10,5 +10,6 @@ export function toUser(row: typeof users.$inferSelect): User {
     registration: row.registration,
     role: row.role,
     coordinatorId: row.coordinatorId,
+    active: row.active,
   }
 }

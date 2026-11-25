@@ -1,7 +1,9 @@
 import type { Session } from '@axis/contracts'
 import { type AppData, createAppData, createUnauthorizedBus } from '@/repositories/app-data'
 import type { AuthRepository } from '@/repositories/auth-repository'
+import type { ProspectRepository } from '@/repositories/prospect-repository'
 import type { RouteRepository } from '@/repositories/route-repository'
+import type { Connectivity } from '@/services/connectivity'
 import { createMemoryStore } from './memory-store'
 
 /** Sessão de Vendedor válida para os testes. */
@@ -17,6 +19,7 @@ export function sellerSession(overrides: Partial<Session['user']> = {}): Session
       role: 'seller',
       coordinatorId: '0198f2a0-7c1e-7000-8000-000000000002',
       ...overrides,
+      active: overrides.active ?? true,
     },
   }
 }
@@ -26,18 +29,34 @@ export type FakeAppData = AppData & {
   emitUnauthorized(token?: string | null): void
 }
 
-/** Repositórios de verdade sobre armazenamento em memória; só o login e a rota podem ser falsos. */
-export function createFakeAppData(auth?: AuthRepository, routes?: RouteRepository): FakeAppData {
+export type FakeExtras = {
+  prospects?: ProspectRepository
+  connectivity?: Connectivity
+  now?: () => Date
+}
+
+/**
+ * Repositórios de verdade sobre armazenamento em memória; só o login, a rota, as Prospecções, a
+ * rede e o relógio podem ser falsos. Sem `connectivity`, o aparelho está sempre com rede.
+ */
+export function createFakeAppData(
+  auth?: AuthRepository,
+  routes?: RouteRepository,
+  { connectivity = { isOnline: async () => true }, now, prospects }: FakeExtras = {},
+): FakeAppData {
   const real = createAppData({
     store: createMemoryStore(),
     fetch: (() => Promise.reject(new Error('rede indisponível nos testes'))) as typeof fetch,
     envApiUrl: () => 'http://env.test',
+    connectivity,
+    now,
   })
   const unauthorized = createUnauthorizedBus()
   return {
     ...real,
     auth: auth ?? real.auth,
     routes: routes ?? real.routes,
+    prospects: prospects ?? real.prospects,
     onUnauthorized: unauthorized.subscribe,
     emitUnauthorized: (token = sellerSession().token) => unauthorized.emit(token),
   }

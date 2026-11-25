@@ -1,4 +1,13 @@
-import type { Customer, Route, User, Visit } from '@axis/contracts'
+import type {
+  Customer,
+  Goal,
+  Loan,
+  PosMaterial,
+  Product,
+  Route,
+  User,
+  Visit,
+} from '@axis/contracts'
 import { hojeEmSaoPaulo } from '../lib/datas'
 
 /** Senha fictícia aceita pela API simulada para os usuários de teste. Só existe no MSW. */
@@ -13,6 +22,7 @@ export const usuariosMock: User[] = [
     registration: '1001',
     role: 'coordinator',
     coordinatorId: null,
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a2',
@@ -22,6 +32,7 @@ export const usuariosMock: User[] = [
     role: 'seller',
     // Vendedor da Equipe da Maria.
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+    active: true,
   },
   {
     id: '0192f4a0-0000-7000-8000-0000000000a3',
@@ -30,6 +41,52 @@ export const usuariosMock: User[] = [
     registration: '2002',
     role: 'seller',
     coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+    active: true,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a4',
+    name: 'Carlos Modelo',
+    email: 'coordenador.b@axis.example',
+    registration: '1002',
+    role: 'coordinator',
+    coordinatorId: null,
+    active: true,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a5',
+    name: 'Lia Modelo',
+    email: 'vendedor.b1@axis.example',
+    registration: '2004',
+    role: 'seller',
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a4',
+    active: true,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a6',
+    name: 'Diana Exemplo',
+    email: 'diretor@axis.example',
+    registration: '3001',
+    role: 'director',
+    coordinatorId: null,
+    active: true,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a7',
+    name: 'Alice Exemplo',
+    email: 'administrador@axis.example',
+    registration: '4001',
+    role: 'administrator',
+    coordinatorId: null,
+    active: true,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-0000000000a8',
+    name: 'Pedro Desativado',
+    email: 'pedro.inativo@axis.example',
+    registration: '2005',
+    role: 'seller',
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a1',
+    active: false,
   },
 ]
 
@@ -170,6 +227,110 @@ export const clientesMock: Customer[] = [
     createdAt: '2026-10-15T12:00:00Z',
     updatedAt: '2026-10-15T12:00:00Z',
   },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000006',
+    legalName: 'Empório Modelo Oeste Ltda',
+    tradeName: 'Empório Modelo Oeste',
+    document: '11222333000181',
+    phone: '62966660006',
+    contactName: 'Roberto (sócio)',
+    zipCode: '74110000',
+    street: 'Avenida Oeste',
+    number: '500',
+    complement: null,
+    district: 'Setor Oeste',
+    city: 'Goiânia',
+    state: 'GO',
+    latitude: -16.683,
+    longitude: -49.27,
+    origin: 'portfolio',
+    status: 'active',
+    coordinatorId: '0192f4a0-0000-7000-8000-0000000000a4',
+    createdById: '0192f4a0-0000-7000-8000-0000000000a4',
+    approvedById: null,
+    approvedAt: null,
+    rejectionReason: null,
+    createdAt: '2026-10-16T12:00:00Z',
+    updatedAt: '2026-10-16T12:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000007',
+    legalName: 'Cantina Bela Vista Ltda',
+    tradeName: 'Cantina Bela Vista',
+    document: '98765432100',
+    phone: '62955550007',
+    contactName: 'Marta (proprietária)',
+    zipCode: '74823000',
+    street: 'Rua Bela Vista',
+    number: '310',
+    complement: 'Quadra 12 Lote 4',
+    district: 'Bela Vista',
+    city: 'Goiânia',
+    state: 'GO',
+    latitude: -16.7112,
+    longitude: -49.2541,
+    origin: 'prospect',
+    status: 'pending_approval',
+    coordinatorId: COORDENADORA,
+    createdById: VENDEDOR,
+    approvedById: null,
+    approvedAt: null,
+    rejectionReason: null,
+    createdAt: '2026-11-05T09:30:00Z',
+    updatedAt: '2026-11-05T09:30:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000008',
+    legalName: 'Restaurante Sabor Goiano Ltda',
+    tradeName: 'Restaurante Sabor Goiano',
+    document: '11122233396',
+    phone: '62944440008',
+    contactName: 'Antônio (gerente)',
+    zipCode: '74120000',
+    street: 'Avenida T-63',
+    number: '880',
+    complement: null,
+    district: 'Setor Bueno',
+    city: 'Goiânia',
+    state: 'GO',
+    latitude: -16.7025,
+    longitude: -49.2689,
+    origin: 'prospect',
+    status: 'pending_approval',
+    coordinatorId: COORDENADORA,
+    createdById: '0192f4a0-0000-7000-8000-0000000000a3',
+    approvedById: null,
+    approvedAt: null,
+    rejectionReason: null,
+    createdAt: '2026-11-06T14:15:00Z',
+    updatedAt: '2026-11-06T14:15:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000009',
+    legalName: 'Supermercado Central Sul Ltda',
+    tradeName: 'Supermercado Central Sul',
+    document: '44455566619',
+    phone: '62933330009',
+    contactName: 'Fernando (diretor)',
+    zipCode: '74915000',
+    street: 'Avenida Rio Verde',
+    number: '1500',
+    complement: 'Anexo Posto',
+    district: 'Vila Brasília',
+    city: 'Aparecida de Goiânia',
+    state: 'GO',
+    latitude: -16.7533,
+    longitude: -49.2789,
+    origin: 'prospect',
+    status: 'rejected',
+    coordinatorId: COORDENADORA,
+    createdById: VENDEDOR,
+    approvedById: null,
+    approvedAt: null,
+    rejectionReason: 'Fora do raio de atendimento da equipe',
+    createdAt: '2026-10-20T11:00:00Z',
+    updatedAt: '2026-10-21T08:00:00Z',
+  },
 ]
 
 // Rotas e Visitas fictícias, relativas ao dia de hoje para a tela sempre ter o que mostrar.
@@ -178,17 +339,20 @@ const HOJE = hojeEmSaoPaulo()
 const ONTEM = new Date(Date.parse(`${HOJE}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
 const BRUNO = VENDEDOR
 const DIEGO = '0192f4a0-0000-7000-8000-0000000000a3'
+const COORDENADOR_B = '0192f4a0-0000-7000-8000-0000000000a4'
+const LIA = '0192f4a0-0000-7000-8000-0000000000a5'
 const cliente = (n: number) => `0192f4a0-0000-7000-8000-00000000000${n}`
 
 export const rotasMock: Route[] = [
   rota('0192f4a0-0000-7000-8000-000000000b01', BRUNO, HOJE),
   rota('0192f4a0-0000-7000-8000-000000000b02', DIEGO, HOJE),
   rota('0192f4a0-0000-7000-8000-000000000b03', BRUNO, ONTEM),
+  rota('0192f4a0-0000-7000-8000-000000000b04', LIA, HOJE, COORDENADOR_B),
 ]
 
-function rota(id: string, sellerId: string, date: string): Route {
+function rota(id: string, sellerId: string, date: string, createdById = COORDENADORA): Route {
   const instante = `${date}T10:00:00Z`
-  return { id, sellerId, date, createdById: COORDENADORA, createdAt: instante, updatedAt: instante }
+  return { id, sellerId, date, createdById, createdAt: instante, updatedAt: instante }
 }
 
 type Andamento =
@@ -259,4 +423,306 @@ export const visitasMock: Visit[] = [
   visita(rotasMock[1].id, HOJE, 2, 2, { estado: 'pendente' }),
   visita(rotasMock[2].id, ONTEM, 1, 1, { estado: 'concluida' }),
   visita(rotasMock[2].id, ONTEM, 4, 2, { estado: 'concluida' }),
+  visita(rotasMock[3].id, HOJE, 6, 1, { estado: 'concluida' }),
+]
+
+/** Pedido simulado no MSW para o cálculo de faturamento do período no dashboard (#40). */
+export type PedidoSimulado = {
+  id: string
+  visitId: string
+  sellerId: string
+  totalCents: number
+  occurredAt: string
+}
+
+export const pedidosMock: PedidoSimulado[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d01',
+    visitId: '0192f4a0-0000-7000-8000-000000000c11',
+    sellerId: BRUNO,
+    totalCents: 64500,
+    occurredAt: `${HOJE}T11:30:00Z`,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d02',
+    visitId: '0192f4a0-0000-7000-8000-000000000c31',
+    sellerId: BRUNO,
+    totalCents: 120000,
+    occurredAt: `${ONTEM}T11:30:00Z`,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d03',
+    visitId: '0192f4a0-0000-7000-8000-000000000c32',
+    sellerId: BRUNO,
+    totalCents: 48000,
+    occurredAt: `${ONTEM}T12:30:00Z`,
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000d04',
+    visitId: '0192f4a0-0000-7000-8000-000000000c41',
+    sellerId: LIA,
+    totalCents: 95000,
+    occurredAt: `${HOJE}T11:35:00Z`,
+  },
+]
+
+export const produtosMock: Product[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e01',
+    sku: 'CERV-PIL-350',
+    name: 'Cerveja Pilsen Lata 350ml',
+    category: 'Cervejas',
+    unitPriceCents: 420,
+    referenceStock: 1500,
+    imageUrl: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=300',
+    active: true,
+    createdAt: '2026-10-01T10:00:00Z',
+    updatedAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e02',
+    sku: 'CERV-IPA-600',
+    name: 'Cerveja IPA Garrafa 600ml',
+    category: 'Cervejas',
+    unitPriceCents: 1450,
+    referenceStock: 400,
+    imageUrl: 'https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=300',
+    active: true,
+    createdAt: '2026-10-01T10:00:00Z',
+    updatedAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e03',
+    sku: 'REFR-COL-2000',
+    name: 'Refrigerante Cola Pet 2L',
+    category: 'Refrigerantes',
+    unitPriceCents: 890,
+    referenceStock: 800,
+    imageUrl: null,
+    active: true,
+    createdAt: '2026-10-02T10:00:00Z',
+    updatedAt: '2026-10-02T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e04',
+    sku: 'REFR-GUA-2000',
+    name: 'Refrigerante Guaraná Pet 2L',
+    category: 'Refrigerantes',
+    unitPriceCents: 850,
+    referenceStock: 750,
+    imageUrl: null,
+    active: true,
+    createdAt: '2026-10-02T10:00:00Z',
+    updatedAt: '2026-10-02T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e05',
+    sku: 'AGUA-MIN-500',
+    name: 'Água Mineral sem Gás 500ml',
+    category: 'Águas e Sucos',
+    unitPriceCents: 250,
+    referenceStock: 2000,
+    imageUrl: null,
+    active: true,
+    createdAt: '2026-10-03T10:00:00Z',
+    updatedAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e06',
+    sku: 'SUCO-UVA-1000',
+    name: 'Suco Integral de Uva 1L',
+    category: 'Águas e Sucos',
+    unitPriceCents: 1200,
+    referenceStock: 350,
+    imageUrl: null,
+    active: true,
+    createdAt: '2026-10-03T10:00:00Z',
+    updatedAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e07',
+    sku: 'ENER-EXT-250',
+    name: 'Energético Extreme Lata 250ml',
+    category: 'Energéticos',
+    unitPriceCents: 900,
+    referenceStock: 600,
+    imageUrl: null,
+    active: true,
+    createdAt: '2026-10-04T10:00:00Z',
+    updatedAt: '2026-10-04T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000e08',
+    sku: 'ISOT-CIT-500',
+    name: 'Isotônico Citrus 500ml',
+    category: 'Isotônicos',
+    unitPriceCents: 650,
+    referenceStock: 300,
+    imageUrl: null,
+    active: false,
+    createdAt: '2026-10-04T10:00:00Z',
+    updatedAt: '2026-10-10T14:00:00Z',
+  },
+]
+
+// Catálogo de materiais de ponto de venda (RF16).
+export const materiaisMock: PosMaterial[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f01',
+    name: 'Geladeira Expositora Slim 1 Porta',
+    category: 'Geladeiras',
+    active: true,
+    createdAt: '2026-10-01T10:00:00Z',
+    updatedAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f02',
+    name: 'Geladeira Expositora Dupla 2 Portas',
+    category: 'Geladeiras',
+    active: true,
+    createdAt: '2026-10-01T10:00:00Z',
+    updatedAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f03',
+    name: 'Freezer Horizontal 300L',
+    category: 'Freezers',
+    active: true,
+    createdAt: '2026-10-02T10:00:00Z',
+    updatedAt: '2026-10-02T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f04',
+    name: 'Display de Chão Metálico 4 Bandejas',
+    category: 'Displays',
+    active: true,
+    createdAt: '2026-10-03T10:00:00Z',
+    updatedAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f05',
+    name: 'Banner Roll-up Promocional 2x1m',
+    category: 'Banners',
+    active: true,
+    createdAt: '2026-10-03T10:00:00Z',
+    updatedAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f06',
+    name: 'Totem Iluminado LED',
+    category: 'Totens',
+    active: false,
+    createdAt: '2026-10-04T10:00:00Z',
+    updatedAt: '2026-10-10T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f07',
+    name: 'Faixa de Gôndola Acrílica 1m',
+    category: 'Faixas de Gôndola',
+    active: true,
+    createdAt: '2026-10-04T10:00:00Z',
+    updatedAt: '2026-10-04T10:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000f08',
+    name: 'Pontalete Promocional Descartável',
+    category: 'Displays',
+    active: true,
+    createdAt: '2026-10-05T10:00:00Z',
+    updatedAt: '2026-10-05T10:00:00Z',
+  },
+]
+
+// Comodatos de materiais por cliente (RF17).
+export const comodatosMock: Loan[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c01',
+    materialId: '0192f4a0-0000-7000-8000-000000000f01',
+    customerId: '0192f4a0-0000-7000-8000-000000000001',
+    serialNumber: 'GEL-SLIM-0012',
+    installedAt: '2026-06-10',
+    endedAt: null,
+    createdAt: '2026-06-10T14:00:00Z',
+    updatedAt: '2026-06-10T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c02',
+    materialId: '0192f4a0-0000-7000-8000-000000000f02',
+    customerId: '0192f4a0-0000-7000-8000-000000000002',
+    serialNumber: 'GEL-DUP-0045',
+    installedAt: '2026-07-01',
+    endedAt: null,
+    createdAt: '2026-07-01T14:00:00Z',
+    updatedAt: '2026-07-01T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c03',
+    materialId: '0192f4a0-0000-7000-8000-000000000f03',
+    customerId: '0192f4a0-0000-7000-8000-000000000003',
+    serialNumber: 'FRZ-300-0089',
+    installedAt: '2026-08-15',
+    endedAt: null,
+    createdAt: '2026-08-15T14:00:00Z',
+    updatedAt: '2026-08-15T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c04',
+    materialId: '0192f4a0-0000-7000-8000-000000000f04',
+    customerId: '0192f4a0-0000-7000-8000-000000000005',
+    serialNumber: 'DIS-MET-0104',
+    installedAt: '2026-09-01',
+    endedAt: null,
+    createdAt: '2026-09-01T14:00:00Z',
+    updatedAt: '2026-09-01T14:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c05',
+    materialId: '0192f4a0-0000-7000-8000-000000000f07',
+    customerId: '0192f4a0-0000-7000-8000-000000000001',
+    serialNumber: 'FXG-2026-0001',
+    installedAt: '2026-05-10',
+    endedAt: '2026-09-30',
+    createdAt: '2026-05-10T14:00:00Z',
+    updatedAt: '2026-09-30T17:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000c06',
+    materialId: '0192f4a0-0000-7000-8000-000000000f05',
+    customerId: '0192f4a0-0000-7000-8000-000000000006',
+    serialNumber: 'BAN-2026-0033',
+    installedAt: '2026-10-18',
+    endedAt: null,
+    createdAt: '2026-10-18T14:00:00Z',
+    updatedAt: '2026-10-18T14:00:00Z',
+  },
+]
+
+// Metas mensais cadastradas pelo Diretor (RF18, RF23, RN02).
+// Mês de referência no seed: novembro de 2026 (2026-11-01).
+const DIRETORA = '0192f4a0-0000-7000-8000-0000000000a6'
+
+export const metasMock: Goal[] = [
+  {
+    id: '0192f4a0-0000-7000-8000-000000000091',
+    sellerId: BRUNO,
+    month: '2026-11-01',
+    revenueTargetCents: 1500000, // R$ 15.000,00
+    visitsTarget: 25,
+    newCustomersTarget: 3,
+    setById: DIRETORA,
+    createdAt: '2026-11-01T08:00:00Z',
+    updatedAt: '2026-11-01T08:00:00Z',
+  },
+  {
+    id: '0192f4a0-0000-7000-8000-000000000092',
+    sellerId: DIEGO,
+    month: '2026-11-01',
+    revenueTargetCents: 1200000, // R$ 12.000,00
+    visitsTarget: 20,
+    newCustomersTarget: 2,
+    setById: DIRETORA,
+    createdAt: '2026-11-01T08:00:00Z',
+    updatedAt: '2026-11-01T08:00:00Z',
+  },
+  // Lia Modelo (vendedor da equipe do Carlos) propositalmente começa SEM meta para testar o caso "sem meta" / nulo.
 ]

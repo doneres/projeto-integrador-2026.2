@@ -58,7 +58,15 @@ No Expo Go, `localhost` aponta para o próprio celular. Use o **IP da sua máqui
 - A tela inicial lê `GET /v1/routes/today` por `RouteRepository` (`src/repositories/route-repository.ts`); nenhuma tela chama `fetch`. Trocar a implementação online por SQLite e fila (#27) não muda as telas.
 - Dia sem rota (404 `SEM_ROTA_HOJE`) vira `null` no repositório e o estado vazio na tela; qualquer outro erro vira o aviso com "Tentar de novo". A leitura espera até 90 s (API no Render Free dorme).
 - Cada Visita mostra o Cliente, o endereço e o estado (Pendente, Em andamento, Concluída, Não realizada) em texto e ícone, num bloco só para o leitor de tela. Por enquanto o item só mostra: o toque para abrir a Visita entra com o check-in.
-- Nos testes, `createFakeAppData(auth, routes)` aceita um repositório de rota falso e `test/route-fixtures.ts` monta rotas nos quatro estados.
+- **Rota atualizada às HH:mm:** a tela mostra a hora da última leitura bem-sucedida (relógio `AppData.now`), lida por extenso no TalkBack ("9 horas e 5 minutos"). A rota é lida ao abrir a tela (o login leva a ela), ao voltar ao foreground **com rede** (`expo-network`) e no botão **Atualizar**. **Não há leitura em intervalo.** Os gatilhos e a hora vivem em `useTodayRoute` (hooks sobre o repositório), então o snapshot offline (#27) entra sem mudar a tela.
+- Sem rede, uma leitura que falha não apaga a rota: ela continua na tela com a hora antiga e um aviso. A atualização não troca uma Visita em andamento (`reconcileRoute`); quando a fila existir, Visitas com operação pendente entram na mesma regra.
+- Nos testes, `createFakeAppData(auth, routes, { connectivity, now })` aceita um repositório de rota, uma rede e um relógio falsos, e `test/route-fixtures.ts` monta rotas nos quatro estados.
+
+## Minhas prospecções
+
+- A tela da rota do dia tem o botão **Minhas prospecções**, que abre a lista das Prospecções que o Vendedor cadastrou, com o estado em texto e ícone (Pendente de aprovação, Aprovada, Rejeitada) e o **motivo** quando Rejeitada. O desfecho aparece na atualização seguinte: a lista é lida ao abrir a tela.
+- `ProspectRepository` (`src/repositories/prospect-repository.ts`) lê `GET /v1/sync/snapshot` e fica com as Prospecções; na onda do offline (#27) o app lê do banco local, que o snapshot alimenta, sem mudar a tela. Prospecção não entra em rota nem recebe Pedido (RN04), por isso a lista é própria.
+- Nos testes, `createFakeAppData(auth, routes, { prospects })` aceita um repositório de Prospecções falso e `test/prospect-fixtures.ts` monta Prospecções nos estados.
 
 ## Scripts
 

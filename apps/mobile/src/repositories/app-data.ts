@@ -1,8 +1,10 @@
 import { type ApiClient, createApiClient } from '@/services/api-client'
 import { type ApiUrlSettings, createApiUrlSettings } from '@/services/api-url'
+import { type Connectivity, deviceConnectivity } from '@/services/connectivity'
 import { getEnv } from '@/services/env'
 import { type KeyValueStore, secureStore } from '@/services/key-value-store'
 import { type AuthRepository, createAuthRepository } from './auth-repository'
+import { createProspectRepository, type ProspectRepository } from './prospect-repository'
 import { createRouteRepository, type RouteRepository } from './route-repository'
 import { createSessionRepository, type SessionRepository } from './session-repository'
 
@@ -29,8 +31,13 @@ export type AppData = {
   api: ApiClient
   auth: AuthRepository
   routes: RouteRepository
+  prospects: ProspectRepository
   sessions: SessionRepository
   apiUrl: ApiUrlSettings
+  /** Rede do aparelho: decide se voltar ao app já vale uma nova leitura. */
+  connectivity: Connectivity
+  /** Relógio do app, para carimbar a hora da última leitura bem-sucedida. */
+  now(): Date
   /**
    * Avisa quando a API recusa o token (401), com o token recusado. Devolve a função que cancela o
    * aviso.
@@ -42,9 +49,17 @@ type Deps = {
   store: KeyValueStore
   fetch?: typeof fetch
   envApiUrl: () => string
+  connectivity?: Connectivity
+  now?: () => Date
 }
 
-export function createAppData({ store, fetch, envApiUrl }: Deps): AppData {
+export function createAppData({
+  store,
+  fetch,
+  envApiUrl,
+  connectivity = deviceConnectivity,
+  now = () => new Date(),
+}: Deps): AppData {
   const sessions = createSessionRepository(store)
   const apiUrl = createApiUrlSettings(store, envApiUrl)
   const unauthorized = createUnauthorizedBus()
@@ -58,8 +73,11 @@ export function createAppData({ store, fetch, envApiUrl }: Deps): AppData {
     api,
     auth: createAuthRepository(api),
     routes: createRouteRepository(api),
+    prospects: createProspectRepository(api),
     sessions,
     apiUrl,
+    connectivity,
+    now,
     onUnauthorized: unauthorized.subscribe,
   }
 }

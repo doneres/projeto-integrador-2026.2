@@ -1,26 +1,68 @@
 import {
   type Customer,
   type CustomerFilters,
+  calcularScoreRN02,
   createRouteBodySchema,
   customerFiltersSchema,
   customerInputSchema,
+  customerRejectionSchema,
   customerStatusChangeSchema,
+  type DashboardSummary,
+  DEFAULT_SCORE_WEIGHTS,
+  dashboardFiltersSchema,
   type ErroDeCampo,
   errosDeValidacao,
+  type Goal,
+  type GoalsMonthlyReport,
+  goalFiltersSchema,
+  goalInputSchema,
+  type Loan,
+  type LoanDetail,
+  loanEndSchema,
+  loanFiltersSchema,
+  loanInputSchema,
   loginBodySchema,
   normalizarDocumento,
   type Page,
+  type PosMaterial,
+  type Product,
+  passwordResetSchema,
+  posMaterialFiltersSchema,
+  posMaterialInputSchema,
+  posMaterialStatusChangeSchema,
+  productFiltersSchema,
+  productInputSchema,
+  productStatusChangeSchema,
   type Route,
   type RouteDetail,
   routeFiltersSchema,
+  type ScoreWeights,
+  type SellerScoreSummary,
   type Session,
   type User,
+  type UserWithCoordinator,
   userFiltersSchema,
+  userInputSchema,
+  userStatusChangeSchema,
+  userUpdateInputSchema,
   type Visit,
   visitStatusOf,
 } from '@axis/contracts'
 import { delay, HttpResponse, http } from 'msw'
-import { clientesMock, rotasMock, SENHA_DEMO, usuariosMock, visitasMock } from './data'
+import { hojeEmSaoPaulo } from '../lib/datas'
+import {
+  clientesMock,
+  comodatosMock,
+  materiaisMock,
+  metasMock,
+  type PedidoSimulado,
+  pedidosMock,
+  produtosMock,
+  rotasMock,
+  SENHA_DEMO,
+  usuariosMock,
+  visitasMock,
+} from './data'
 
 const DURACAO_DA_SESSAO_MS = 8 * 60 * 60 * 1000
 const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
@@ -29,6 +71,13 @@ const PREFIXO_DO_TOKEN = 'Bearer token-simulado-'
 let clientes: Customer[] = structuredClone(clientesMock)
 let rotas: Route[] = structuredClone(rotasMock)
 let visitas: Visit[] = structuredClone(visitasMock)
+let produtos: Product[] = structuredClone(produtosMock)
+let materiais: PosMaterial[] = structuredClone(materiaisMock)
+let comodatos: Loan[] = structuredClone(comodatosMock)
+let metas: Goal[] = structuredClone(metasMock)
+let usuarios: User[] = structuredClone(usuariosMock)
+const senhasDeUsuarios: Map<string, string> = new Map()
+const pedidos: PedidoSimulado[] = structuredClone(pedidosMock)
 
 const agora = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z')
 
@@ -50,7 +99,11 @@ function usuarioDaRequisicao(request: Request): User | undefined {
     return undefined
   }
   const id = cabecalho.slice(PREFIXO_DO_TOKEN.length)
-  return usuariosMock.find((usuario) => usuario.id === id)
+  const usuario = usuarios.find((u) => u.id === id)
+  if (!usuario?.active) {
+    return undefined
+  }
+  return usuario
 }
 
 const naoAutenticado = () =>
@@ -107,6 +160,11 @@ function documentoEmUso(documento: string, idIgnorado?: string): boolean {
   )
 }
 
+function skuEmUso(sku: string, idIgnorado?: string): boolean {
+  const normalizado = sku.trim().toUpperCase()
+  return produtos.some((p) => p.sku.toUpperCase() === normalizado && p.id !== idIgnorado)
+}
+
 function pagina<T>(itens: T[], page: number, perPage: number): Page<T> {
   const inicio = (page - 1) * perPage
   return { items: itens.slice(inicio, inicio + perPage), total: itens.length, page, perPage }
@@ -114,9 +172,12 @@ function pagina<T>(itens: T[], page: number, perPage: number): Page<T> {
 
 /** Vendedores que o usuário enxerga: o Coordenador, os da Equipe; o Diretor, todos. */
 function idsDaEquipe(usuario: User): string[] {
-  return usuariosMock
+  return usuarios
     .filter(
-      (u) => u.role === 'seller' && (usuario.role === 'director' || u.coordinatorId === usuario.id),
+      (u) =>
+        u.role === 'seller' &&
+        u.active &&
+        (usuario.role === 'director' || u.coordinatorId === usuario.id),
     )
     .map((u) => u.id)
 }
@@ -147,11 +208,168 @@ function detalhe(rota: Route): RouteDetail {
   }
 }
 
+/** Comodato com material e cliente associados. */
+function detalheComodato(comodato: Loan): LoanDetail {
+  const material = materiais.find((m) => m.id === comodato.materialId)
+  const customer = clientes.find((c) => c.id === comodato.customerId)
+  return { ...comodato, material, customer }
+}
+
 const rotaNaoEncontrada = () =>
   problema(404, 'NAO_ENCONTRADO', 'Não encontrado', { detail: 'Rota não encontrada.' })
 
 function validacao(erros: ErroDeCampo[]) {
   return problema(422, 'VALIDACAO', 'Dados inválidos', { erros })
+}
+
+/** Resumo consolidado do dia e faturamento do mês para o escopo do usuário (#40). */
+function resumoDoPainel(usuario: User, date: string): DashboardSummary {
+  const month = date.slice(0, 7)
+  const vendedores = usuarios
+    .filter(
+      (u) =>
+        u.role === 'seller' &&
+        u.active &&
+        (usuario.role === 'director' || u.coordinatorId === usuario.id),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const idsVendedores = new Set(vendedores.map((v) => v.id))
+
+  const rotasDoDia = rotas.filter((r) => r.date === date && idsVendedores.has(r.sellerId))
+  const rotaPorVendedor = new Map(rotasDoDia.map((r) => [r.sellerId, r.id]))
+
+  const totais = { planned: 0, completed: 0, inProgress: 0, notPerformed: 0, pending: 0 }
+
+  const visitsBySeller = vendedores.map((vendedor) => {
+    const rotaId = rotaPorVendedor.get(vendedor.id)
+    const visitasDoVendedor = rotaId ? visitas.filter((v) => v.routeId === rotaId) : []
+    const contagem = {
+      sellerId: vendedor.id,
+      sellerName: vendedor.name,
+      planned: visitasDoVendedor.length,
+      completed: 0,
+      inProgress: 0,
+      notPerformed: 0,
+    }
+    totais.planned += visitasDoVendedor.length
+    for (const v of visitasDoVendedor) {
+      const status = visitStatusOf(v)
+      if (status === 'completed') {
+        contagem.completed += 1
+        totais.completed += 1
+      } else if (status === 'in_progress') {
+        contagem.inProgress += 1
+        totais.inProgress += 1
+      } else if (status === 'not_performed') {
+        contagem.notPerformed += 1
+        totais.notPerformed += 1
+      } else {
+        totais.pending += 1
+      }
+    }
+    return contagem
+  })
+
+  const pedidosDoMes = pedidos.filter(
+    (p) =>
+      idsVendedores.has(p.sellerId) && hojeEmSaoPaulo(new Date(p.occurredAt)).startsWith(month),
+  )
+  const revenueCents = pedidosDoMes.reduce((soma, p) => soma + p.totalCents, 0)
+
+  return {
+    date,
+    month,
+    visits: totais,
+    revenueCents,
+    ordersCount: pedidosDoMes.length,
+    visitsBySeller,
+  }
+}
+
+/** Calcula o relatório mensal de metas e score ponderado por vendedor (RF18, RF23, RN02). */
+function relatorioDeMetas(
+  month: string,
+  pesos: ScoreWeights = DEFAULT_SCORE_WEIGHTS,
+): GoalsMonthlyReport {
+  const diaPrimeiro = `${month}-01`
+  const vendedores = usuarios
+    .filter((u) => u.role === 'seller')
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+
+  const sellers: SellerScoreSummary[] = vendedores.map((vendedor) => {
+    const coordenador = usuarios.find((u) => u.id === vendedor.coordinatorId)
+    const metaCadastrada = metas.find((m) => m.sellerId === vendedor.id && m.month === diaPrimeiro)
+
+    // Faturamento do mês (pedidos emitidos no mês pelo vendedor)
+    const pedidosDoVendedor = pedidos.filter(
+      (p) => p.sellerId === vendedor.id && hojeEmSaoPaulo(new Date(p.occurredAt)).startsWith(month),
+    )
+    const revenueRealized = pedidosDoVendedor.reduce((acc, p) => acc + p.totalCents, 0)
+
+    // Visitas concluídas no mês pelo vendedor (rotas do mês com visitas concluídas)
+    const rotasDoMes = rotas.filter((r) => r.sellerId === vendedor.id && r.date.startsWith(month))
+    const idsRotasMes = new Set(rotasDoMes.map((r) => r.id))
+    const visitasConcluidas = visitas.filter(
+      (v) => idsRotasMes.has(v.routeId) && visitStatusOf(v) === 'completed',
+    ).length
+
+    // Novos clientes: prospecções cadastradas pelo vendedor e APROVADAS neste mês (RN02)
+    const novosClientes = clientes.filter(
+      (c) =>
+        c.createdById === vendedor.id &&
+        c.origin === 'prospect' &&
+        c.approvedAt !== null &&
+        hojeEmSaoPaulo(new Date(c.approvedAt)).startsWith(month),
+    ).length
+
+    const hasGoal = Boolean(metaCadastrada)
+    const perf = calcularScoreRN02(
+      {
+        revenue: {
+          realized: revenueRealized,
+          target: metaCadastrada?.revenueTargetCents,
+        },
+        visits: {
+          realized: visitasConcluidas,
+          target: metaCadastrada?.visitsTarget,
+        },
+        newCustomers: {
+          realized: novosClientes,
+          target: metaCadastrada?.newCustomersTarget,
+        },
+      },
+      pesos,
+    )
+
+    return {
+      sellerId: vendedor.id,
+      sellerName: vendedor.name,
+      coordinatorId: vendedor.coordinatorId,
+      coordinatorName: coordenador?.name ?? null,
+      month,
+      hasGoal,
+      revenue: perf.revenue,
+      visits: perf.visits,
+      newCustomers: perf.newCustomers,
+      score: perf.score,
+    }
+  })
+
+  // Média de score dos vendedores que possuem score calculado
+  const scoresValidos = sellers
+    .map((s) => s.score)
+    .filter((s): s is number => typeof s === 'number')
+  const overallScore =
+    scoresValidos.length > 0
+      ? Math.round((scoresValidos.reduce((acc, s) => acc + s, 0) / scoresValidos.length) * 10) / 10
+      : null
+
+  return {
+    month,
+    weights: pesos,
+    sellers,
+    overallScore,
+  }
 }
 
 // Cada handler imita um endpoint do contrato da API (/v1/...).
@@ -163,12 +381,18 @@ export const handlers = [
       return validacao(errosDeValidacao(corpo.error))
     }
     const { identifier, password } = corpo.data
-    const usuario = usuariosMock.find(
+    const usuario = usuarios.find(
       (u) => u.email.toLowerCase() === identifier.toLowerCase() || u.registration === identifier,
     )
-    if (!usuario || password !== SENHA_DEMO) {
+    const senhaEsperada = usuario ? (senhasDeUsuarios.get(usuario.id) ?? SENHA_DEMO) : null
+    if (!usuario || password !== senhaEsperada) {
       return problema(401, 'CREDENCIAIS_INVALIDAS', 'Credenciais inválidas', {
         detail: 'E-mail/matrícula ou senha incorretos.',
+      })
+    }
+    if (!usuario.active) {
+      return problema(401, 'CREDENCIAIS_INVALIDAS', 'Credenciais inválidas', {
+        detail: 'Esta conta está desativada.',
       })
     }
     const expiresAt = new Date(Date.now() + DURACAO_DA_SESSAO_MS)
@@ -176,6 +400,14 @@ export const handlers = [
       .replace(/\.\d+Z$/, 'Z')
     const sessao: Session = { token: `token-simulado-${usuario.id}`, expiresAt, user: usuario }
     return HttpResponse.json(sessao)
+  }),
+
+  http.get('/v1/me', async ({ request }) => {
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    return HttpResponse.json(usuario)
   }),
 
   http.get('/v1/customers', async ({ request }) => {
@@ -298,14 +530,81 @@ export const handlers = [
     return HttpResponse.json(atualizado)
   }),
 
-  // Usuários e montagem de rota: imitam o que a #79 vai entregar na API real.
+  http.post('/v1/customers/:id/approval', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const atual = daEquipe(usuario).find((c) => c.id === String(params.id))
+    if (!atual) {
+      return naoEncontrado()
+    }
+    if (atual.origin !== 'prospect' || atual.status !== 'pending_approval') {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Transição inválida', {
+        detail: 'Só prospecção com aprovação pendente pode ser aprovada.',
+      })
+    }
+    const agoraIso = agora()
+    const atualizado: Customer = {
+      ...atual,
+      status: 'active',
+      approvedById: usuario.id,
+      approvedAt: agoraIso,
+      updatedAt: agoraIso,
+    }
+    clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.post('/v1/customers/:id/rejection', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator') {
+      return semPermissao()
+    }
+    const atual = daEquipe(usuario).find((c) => c.id === String(params.id))
+    if (!atual) {
+      return naoEncontrado()
+    }
+    const corpo = customerRejectionSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (atual.origin !== 'prospect' || atual.status !== 'pending_approval') {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Transição inválida', {
+        detail: 'Só prospecção com aprovação pendente pode ser rejeitada.',
+      })
+    }
+    const agoraIso = agora()
+    const atualizado: Customer = {
+      ...atual,
+      status: 'rejected',
+      rejectionReason: corpo.data.reason,
+      updatedAt: agoraIso,
+    }
+    clientes = clientes.map((c) => (c.id === atual.id ? atualizado : c))
+    return HttpResponse.json(atualizado)
+  }),
+
+  // Gestão de usuários, perfis e redefinição de senha (#45, #79).
   http.get('/v1/users', async ({ request }) => {
     await delay(200)
     const usuario = usuarioDaRequisicao(request)
     if (!usuario) {
       return naoAutenticado()
     }
-    if (usuario.role !== 'coordinator' && usuario.role !== 'director') {
+    if (
+      usuario.role !== 'coordinator' &&
+      usuario.role !== 'director' &&
+      usuario.role !== 'administrator'
+    ) {
       return semPermissao()
     }
     const consulta = userFiltersSchema.safeParse(
@@ -314,12 +613,245 @@ export const handlers = [
     if (!consulta.success) {
       return validacao(errosDeValidacao(consulta.error))
     }
-    const { role, page, perPage } = consulta.data
-    const equipe = idsDaEquipe(usuario)
-    const encontrados = usuariosMock
-      .filter((u) => equipe.includes(u.id) && (!role || u.role === role))
-      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
-    return HttpResponse.json(pagina(encontrados, page, perPage))
+    const { role, search, active, coordinatorId, sortBy, order, page, perPage } = consulta.data
+
+    let base = usuarios
+    if (usuario.role === 'coordinator') {
+      const equipe = idsDaEquipe(usuario)
+      base = base.filter((u) => equipe.includes(u.id))
+    }
+
+    let encontrados = base.filter((u) => {
+      if (role && u.role !== role) return false
+      if (active !== undefined && u.active !== active) return false
+      if (coordinatorId && u.coordinatorId !== coordinatorId) return false
+      if (search) {
+        const termo = search.toLowerCase()
+        const bateu =
+          u.name.toLowerCase().includes(termo) ||
+          u.email.toLowerCase().includes(termo) ||
+          u.registration.toLowerCase().includes(termo)
+        if (!bateu) return false
+      }
+      return true
+    })
+
+    const multiplicador = order === 'desc' ? -1 : 1
+    encontrados = encontrados.sort((a, b) => {
+      let comp = 0
+      if (sortBy === 'name') comp = a.name.localeCompare(b.name, 'pt-BR')
+      else if (sortBy === 'email') comp = a.email.localeCompare(b.email, 'pt-BR')
+      else if (sortBy === 'registration')
+        comp = a.registration.localeCompare(b.registration, 'pt-BR')
+      else if (sortBy === 'role') comp = a.role.localeCompare(b.role)
+      return (comp || a.id.localeCompare(b.id)) * multiplicador
+    })
+
+    const comCoordenador: UserWithCoordinator[] = encontrados.map((u) => {
+      const coordenador = u.coordinatorId ? usuarios.find((c) => c.id === u.coordinatorId) : null
+      return {
+        ...u,
+        coordinatorName: coordenador ? coordenador.name : null,
+      }
+    })
+
+    return HttpResponse.json(pagina(comCoordenador, page, perPage))
+  }),
+
+  http.get('/v1/users/:id', async ({ request, params }) => {
+    await delay(150)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const id = String(params.id)
+    const encontrado = usuarios.find((u) => u.id === id)
+    if (!encontrado) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    if (usuario.role !== 'administrator' && usuario.id !== id) {
+      return semPermissao()
+    }
+    const coordenador = encontrado.coordinatorId
+      ? usuarios.find((c) => c.id === encontrado.coordinatorId)
+      : null
+    const resposta: UserWithCoordinator = {
+      ...encontrado,
+      coordinatorName: coordenador ? coordenador.name : null,
+    }
+    return HttpResponse.json(resposta)
+  }),
+
+  http.post('/v1/users', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = userInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const { name, email, registration, role, coordinatorId, password } = corpo.data
+    if (usuarios.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+      return problema(409, 'EMAIL_JA_CADASTRADO', 'E-mail já cadastrado', {
+        detail: 'Já existe um usuário com este e-mail.',
+      })
+    }
+    if (usuarios.some((u) => u.registration.toLowerCase() === registration.toLowerCase())) {
+      return problema(409, 'MATRICULA_JA_CADASTRADA', 'Matrícula já cadastrada', {
+        detail: 'Já existe um usuário com esta matrícula.',
+      })
+    }
+    if (role === 'seller' && coordinatorId) {
+      const coord = usuarios.find((u) => u.id === coordinatorId && u.role === 'coordinator')
+      if (!coord?.active) {
+        return validacao([{ campo: 'coordinatorId', mensagem: 'Coordenador inválido ou inativo.' }])
+      }
+    }
+    const novo: User = {
+      id: crypto.randomUUID(),
+      name,
+      email,
+      registration,
+      role,
+      coordinatorId: role === 'seller' ? (coordinatorId ?? null) : null,
+      active: true,
+    }
+    if (password) {
+      senhasDeUsuarios.set(novo.id, password)
+    }
+    usuarios.push(novo)
+    return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.put('/v1/users/:id', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const id = String(params.id)
+    const existente = usuarios.find((u) => u.id === id)
+    if (!existente) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    const corpo = userUpdateInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const { name, email, registration, role, coordinatorId } = corpo.data
+    if (usuarios.some((u) => u.id !== id && u.email.toLowerCase() === email.toLowerCase())) {
+      return problema(409, 'EMAIL_JA_CADASTRADO', 'E-mail já cadastrado', {
+        detail: 'Já existe um usuário com este e-mail.',
+      })
+    }
+    if (
+      usuarios.some(
+        (u) => u.id !== id && u.registration.toLowerCase() === registration.toLowerCase(),
+      )
+    ) {
+      return problema(409, 'MATRICULA_JA_CADASTRADA', 'Matrícula já cadastrada', {
+        detail: 'Já existe um usuário com esta matrícula.',
+      })
+    }
+    if (existente.role === 'coordinator' && role !== 'coordinator') {
+      const temVendedores = usuarios.some((u) => u.coordinatorId === id)
+      if (temVendedores) {
+        return problema(
+          409,
+          'COORDENADOR_COM_VENDEDORES',
+          'Coordenador possui vendedores vinculados',
+          {
+            detail:
+              'Não é possível alterar o perfil de um coordenador que possui vendedores vinculados.',
+          },
+        )
+      }
+    }
+    if (role === 'seller' && coordinatorId) {
+      const coord = usuarios.find((u) => u.id === coordinatorId && u.role === 'coordinator')
+      if (!coord?.active) {
+        return validacao([{ campo: 'coordinatorId', mensagem: 'Coordenador inválido ou inativo.' }])
+      }
+    }
+    const atualizado: User = {
+      ...existente,
+      name,
+      email,
+      registration,
+      role,
+      coordinatorId: role === 'seller' ? (coordinatorId ?? null) : null,
+    }
+    usuarios = usuarios.map((u) => (u.id === id ? atualizado : u))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.patch('/v1/users/:id/status', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const id = String(params.id)
+    const existente = usuarios.find((u) => u.id === id)
+    if (!existente) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    const corpo = userStatusChangeSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (existente.id === usuario.id && !corpo.data.active) {
+      return problema(409, 'NAO_PODE_DESATIVAR_A_SI_MESMO', 'Ação não permitida', {
+        detail: 'Você não pode desativar a sua própria conta conectada.',
+      })
+    }
+    const atualizado: User = {
+      ...existente,
+      active: corpo.data.active,
+    }
+    usuarios = usuarios.map((u) => (u.id === id ? atualizado : u))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.post('/v1/users/:id/password-reset', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const id = String(params.id)
+    const existente = usuarios.find((u) => u.id === id)
+    if (!existente) {
+      return problema(404, 'NAO_ENCONTRADO', 'Usuário não encontrado', {
+        detail: 'Usuário não encontrado.',
+      })
+    }
+    const corpo = passwordResetSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    senhasDeUsuarios.set(existente.id, corpo.data.newPassword)
+    return HttpResponse.json({ message: 'Senha redefinida com sucesso.' })
   }),
 
   http.get('/v1/routes', async ({ request }) => {
@@ -419,5 +951,568 @@ export const handlers = [
       ),
     ]
     return HttpResponse.json(detalhe(nova), { status: 201 })
+  }),
+
+  http.get('/v1/dashboard', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'coordinator' && usuario.role !== 'director') {
+      return semPermissao()
+    }
+    const consulta = dashboardFiltersSchema.safeParse(
+      Object.fromEntries(new URL(request.url).searchParams),
+    )
+    if (!consulta.success) {
+      return validacao(errosDeValidacao(consulta.error))
+    }
+    const date = consulta.data.date ?? hojeEmSaoPaulo()
+    return HttpResponse.json(resumoDoPainel(usuario, date))
+  }),
+
+  // Catálogo de produtos (RF20, #44): Gestão de itens comercializados pelo Administrador.
+  http.get('/v1/products', async ({ request }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const params = Object.fromEntries(new URL(request.url).searchParams)
+    const consulta = productFiltersSchema.safeParse(params)
+    if (!consulta.success) {
+      return validacao(errosDeValidacao(consulta.error))
+    }
+    const { search, category, active, sortBy, order, page: numPagina, perPage } = consulta.data
+    const termo = search?.trim().toLowerCase()
+    const direcao = order === 'desc' ? -1 : 1
+
+    const filtrados = produtos
+      .filter((p) => {
+        if (active !== undefined && p.active !== active) return false
+        if (category && p.category.toLowerCase() !== category.trim().toLowerCase()) return false
+        if (termo) {
+          const casouNome = p.name.toLowerCase().includes(termo)
+          const casouSku = p.sku.toLowerCase().includes(termo)
+          const casouCategoria = p.category.toLowerCase().includes(termo)
+          if (!casouNome && !casouSku && !casouCategoria) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        const valA = a[sortBy]
+        const valB = b[sortBy]
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return direcao * valA.localeCompare(valB, 'pt-BR') || a.id.localeCompare(b.id)
+        }
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return direcao * (valA - valB) || a.id.localeCompare(b.id)
+        }
+        return 0
+      })
+
+    return HttpResponse.json(pagina(filtrados, numPagina, perPage))
+  }),
+
+  http.get('/v1/products/:id', async ({ request, params }) => {
+    await delay(150)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const encontrado = produtos.find((p) => p.id === String(params.id))
+    if (!encontrado) {
+      return problema(404, 'NAO_ENCONTRADO', 'Produto não encontrado')
+    }
+    return HttpResponse.json(encontrado)
+  }),
+
+  http.post('/v1/products', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = productInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (skuEmUso(corpo.data.sku)) {
+      return problema(409, 'SKU_JA_CADASTRADO', 'SKU já cadastrado', {
+        detail: 'Já existe um produto com este SKU no catálogo.',
+      })
+    }
+    const instante = agora()
+    const novo: Product = {
+      id: crypto.randomUUID(),
+      sku: corpo.data.sku.trim().toUpperCase(),
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      unitPriceCents: corpo.data.unitPriceCents,
+      referenceStock: corpo.data.referenceStock,
+      imageUrl: corpo.data.imageUrl || null,
+      active: true,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    produtos = [...produtos, novo]
+    return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.put('/v1/products/:id', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = produtos.find((p) => p.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Produto não encontrado')
+    }
+    const corpo = productInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (skuEmUso(corpo.data.sku, atual.id)) {
+      return problema(409, 'SKU_JA_CADASTRADO', 'SKU já cadastrado', {
+        detail: 'Já existe outro produto com este SKU no catálogo.',
+      })
+    }
+    const atualizado: Product = {
+      ...atual,
+      sku: corpo.data.sku.trim().toUpperCase(),
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      unitPriceCents: corpo.data.unitPriceCents,
+      referenceStock: corpo.data.referenceStock,
+      imageUrl: corpo.data.imageUrl || null,
+      updatedAt: agora(),
+    }
+    produtos = produtos.map((p) => (p.id === atual.id ? atualizado : p))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.patch('/v1/products/:id/status', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = produtos.find((p) => p.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Produto não encontrado')
+    }
+    const corpo = productStatusChangeSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const atualizado: Product = {
+      ...atual,
+      active: corpo.data.active,
+      updatedAt: agora(),
+    }
+    produtos = produtos.map((p) => (p.id === atual.id ? atualizado : p))
+    return HttpResponse.json(atualizado)
+  }),
+
+  // --- Materiais de PDV (RF16) ---
+
+  http.get('/v1/pos-materials', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const url = new URL(request.url)
+    const query = Object.fromEntries(url.searchParams)
+    const parse = posMaterialFiltersSchema.safeParse(query)
+    if (!parse.success) {
+      return validacao(errosDeValidacao(parse.error))
+    }
+    const filtros = parse.data
+    const termo = filtros.search?.toLowerCase()
+    const direcao = filtros.order === 'desc' ? -1 : 1
+    const filtrados = materiais
+      .filter(
+        (m) =>
+          (!termo ||
+            m.name.toLowerCase().includes(termo) ||
+            m.category.toLowerCase().includes(termo)) &&
+          (!filtros.category || m.category.toLowerCase() === filtros.category.toLowerCase()) &&
+          (filtros.active === undefined || m.active === filtros.active),
+      )
+      .sort(
+        (a, b) =>
+          direcao * String(a[filtros.sortBy]).localeCompare(String(b[filtros.sortBy]), 'pt-BR') ||
+          a.id.localeCompare(b.id),
+      )
+    return HttpResponse.json(pagina(filtrados, filtros.page, filtros.perPage))
+  }),
+
+  http.get('/v1/pos-materials/:id', async ({ request, params }) => {
+    await delay(150)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    const encontrado = materiais.find((m) => m.id === String(params.id))
+    if (!encontrado) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    return HttpResponse.json(encontrado)
+  }),
+
+  http.post('/v1/pos-materials', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = posMaterialInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const instante = agora()
+    const novo: PosMaterial = {
+      id: crypto.randomUUID(),
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      active: true,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    materiais = [...materiais, novo]
+    return HttpResponse.json(novo, { status: 201 })
+  }),
+
+  http.put('/v1/pos-materials/:id', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = materiais.find((m) => m.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    const corpo = posMaterialInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const atualizado: PosMaterial = {
+      ...atual,
+      name: corpo.data.name.trim(),
+      category: corpo.data.category.trim(),
+      updatedAt: agora(),
+    }
+    materiais = materiais.map((m) => (m.id === atual.id ? atualizado : m))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.patch('/v1/pos-materials/:id/status', async ({ request, params }) => {
+    await delay(200)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = materiais.find((m) => m.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    const corpo = posMaterialStatusChangeSchema.safeParse(
+      await request.json().catch(() => undefined),
+    )
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const atualizado: PosMaterial = {
+      ...atual,
+      active: corpo.data.active,
+      updatedAt: agora(),
+    }
+    materiais = materiais.map((m) => (m.id === atual.id ? atualizado : m))
+    return HttpResponse.json(atualizado)
+  }),
+
+  http.delete('/v1/pos-materials/:id', async ({ request, params }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = materiais.find((m) => m.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Material não encontrado')
+    }
+    // Regra do modelo de dados: exclusão real permitida APENAS sem comodatos ativos vinculados.
+    const temComodatoAtivo = comodatos.some((c) => c.materialId === atual.id && c.endedAt === null)
+    if (temComodatoAtivo) {
+      return problema(409, 'MATERIAL_EM_USO', 'Material em uso', {
+        detail:
+          'Não é possível excluir material com comodatos ativos vinculados. Encerre os comodatos antes de excluir.',
+      })
+    }
+    materiais = materiais.filter((m) => m.id !== atual.id)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // --- Comodatos por Cliente (RF17) ---
+
+  http.get('/v1/loans', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (
+      usuario.role !== 'administrator' &&
+      usuario.role !== 'coordinator' &&
+      usuario.role !== 'director'
+    ) {
+      return semPermissao()
+    }
+    const url = new URL(request.url)
+    const query = Object.fromEntries(url.searchParams)
+    const parse = loanFiltersSchema.safeParse(query)
+    if (!parse.success) {
+      return validacao(errosDeValidacao(parse.error))
+    }
+    const filtros = parse.data
+    // Escopo por perfil: Administrador e Diretor veem todos; Coordenador vê apenas comodatos dos clientes da sua equipe.
+    let base = comodatos
+    if (usuario.role === 'coordinator') {
+      const idsClientesEquipe = new Set(daEquipe(usuario).map((c) => c.id))
+      base = base.filter((c) => idsClientesEquipe.has(c.customerId))
+    }
+    const enriquecidos = base.map(detalheComodato)
+    const termo = filtros.search?.toLowerCase()
+    const direcao = filtros.order === 'desc' ? -1 : 1
+    const filtrados = enriquecidos
+      .filter(
+        (l) =>
+          (!filtros.customerId || l.customerId === filtros.customerId) &&
+          (!filtros.materialId || l.materialId === filtros.materialId) &&
+          (filtros.activeOnly === undefined || (filtros.activeOnly ? l.endedAt === null : true)) &&
+          (!termo ||
+            l.serialNumber.toLowerCase().includes(termo) ||
+            l.customer?.tradeName.toLowerCase().includes(termo) ||
+            l.customer?.legalName.toLowerCase().includes(termo) ||
+            l.material?.name.toLowerCase().includes(termo)),
+      )
+      .sort(
+        (a, b) =>
+          direcao *
+            String(a[filtros.sortBy] ?? '').localeCompare(
+              String(b[filtros.sortBy] ?? ''),
+              'pt-BR',
+            ) || a.id.localeCompare(b.id),
+      )
+    return HttpResponse.json(pagina(filtrados, filtros.page, filtros.perPage))
+  }),
+
+  http.post('/v1/loans', async ({ request }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const corpo = loanInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    const material = materiais.find((m) => m.id === corpo.data.materialId)
+    if (!material) {
+      return validacao([{ campo: 'materialId', mensagem: 'Material não encontrado no catálogo' }])
+    }
+    if (!material.active) {
+      return validacao([
+        { campo: 'materialId', mensagem: 'Não é possível vincular material inativo' },
+      ])
+    }
+    const cliente = clientes.find((c) => c.id === corpo.data.customerId)
+    if (!cliente) {
+      return validacao([{ campo: 'customerId', mensagem: 'Cliente não encontrado' }])
+    }
+    if (cliente.status !== 'active') {
+      return validacao([
+        { campo: 'customerId', mensagem: 'O cliente precisa estar ativo para receber comodato' },
+      ])
+    }
+    const serialNormalizado = corpo.data.serialNumber.trim()
+    const serialRepetidoAtivo = comodatos.some(
+      (c) =>
+        c.serialNumber.trim().toLowerCase() === serialNormalizado.toLowerCase() &&
+        c.endedAt === null,
+    )
+    if (serialRepetidoAtivo) {
+      return problema(409, 'NUMERO_SERIE_EM_USO', 'Patrimônio já em uso', {
+        detail: 'Já existe um comodato ativo com este patrimônio ou número de série.',
+      })
+    }
+    const instante = agora()
+    const novo: Loan = {
+      id: crypto.randomUUID(),
+      materialId: corpo.data.materialId,
+      customerId: corpo.data.customerId,
+      serialNumber: serialNormalizado,
+      installedAt: corpo.data.installedAt,
+      endedAt: null,
+      createdAt: instante,
+      updatedAt: instante,
+    }
+    comodatos = [...comodatos, novo]
+    return HttpResponse.json(detalheComodato(novo), { status: 201 })
+  }),
+
+  http.patch('/v1/loans/:id/end', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'administrator') {
+      return semPermissao()
+    }
+    const atual = comodatos.find((c) => c.id === String(params.id))
+    if (!atual) {
+      return problema(404, 'NAO_ENCONTRADO', 'Comodato não encontrado')
+    }
+    if (atual.endedAt !== null) {
+      return problema(409, 'TRANSICAO_INVALIDA', 'Comodato já encerrado', {
+        detail: 'Este comodato já foi encerrado anteriormente.',
+      })
+    }
+    const corpo = loanEndSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+    if (corpo.data.endedAt < atual.installedAt) {
+      return validacao([
+        {
+          campo: 'endedAt',
+          mensagem: 'A data de encerramento não pode ser anterior à data de instalação.',
+        },
+      ])
+    }
+    const atualizado: Loan = {
+      ...atual,
+      endedAt: corpo.data.endedAt,
+      updatedAt: agora(),
+    }
+    comodatos = comodatos.map((c) => (c.id === atual.id ? atualizado : c))
+    return HttpResponse.json(detalheComodato(atualizado))
+  }),
+
+  // --- Metas e Score RN02 (#43, #63) ---
+
+  http.get('/v1/goals', async ({ request }) => {
+    await delay(250)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    // Metas e score do diretor são acessíveis por Diretor, Coordenador (leitura) ou Administrador
+    if (
+      usuario.role !== 'director' &&
+      usuario.role !== 'coordinator' &&
+      usuario.role !== 'administrator'
+    ) {
+      return semPermissao()
+    }
+    const url = new URL(request.url)
+    const query = Object.fromEntries(url.searchParams)
+    const parse = goalFiltersSchema.safeParse(query)
+    if (!parse.success) {
+      return validacao(errosDeValidacao(parse.error))
+    }
+    const month = parse.data.month ?? hojeEmSaoPaulo().slice(0, 7)
+    const relatorio = relatorioDeMetas(month)
+
+    // Se forneceu sellerId, filtra
+    if (parse.data.sellerId) {
+      const filtrado = relatorio.sellers.filter((s) => s.sellerId === parse.data.sellerId)
+      return HttpResponse.json({ ...relatorio, sellers: filtrado })
+    }
+
+    return HttpResponse.json(relatorio)
+  }),
+
+  http.put('/v1/goals/:sellerId/:month', async ({ request, params }) => {
+    await delay(300)
+    const usuario = usuarioDaRequisicao(request)
+    if (!usuario) {
+      return naoAutenticado()
+    }
+    if (usuario.role !== 'director') {
+      return semPermissao()
+    }
+    const sellerId = String(params.sellerId)
+    const monthParam = String(params.month)
+    const vendedor = usuarios.find((u) => u.id === sellerId && u.role === 'seller')
+    if (!vendedor) {
+      return problema(404, 'NAO_ENCONTRADO', 'Vendedor não encontrado')
+    }
+    // Converte YYYY-MM para YYYY-MM-01
+    const diaPrimeiro = monthParam.length === 7 ? `${monthParam}-01` : monthParam
+    if (!/^\d{4}-\d{2}-01$/.test(diaPrimeiro)) {
+      return validacao([{ campo: 'month', mensagem: 'Mês inválido' }])
+    }
+
+    const corpo = goalInputSchema.safeParse(await request.json().catch(() => undefined))
+    if (!corpo.success) {
+      return validacao(errosDeValidacao(corpo.error))
+    }
+
+    const instante = agora()
+    const existenteIndex = metas.findIndex(
+      (m) => m.sellerId === sellerId && m.month === diaPrimeiro,
+    )
+
+    const metaSalva: Goal = {
+      id: existenteIndex >= 0 ? metas[existenteIndex].id : crypto.randomUUID(),
+      sellerId,
+      month: diaPrimeiro,
+      revenueTargetCents: corpo.data.revenueTargetCents ?? null,
+      visitsTarget: corpo.data.visitsTarget ?? null,
+      newCustomersTarget: corpo.data.newCustomersTarget ?? null,
+      setById: usuario.id,
+      createdAt: existenteIndex >= 0 ? metas[existenteIndex].createdAt : instante,
+      updatedAt: instante,
+    }
+
+    if (existenteIndex >= 0) {
+      metas[existenteIndex] = metaSalva
+    } else {
+      metas = [...metas, metaSalva]
+    }
+
+    const relatorio = relatorioDeMetas(diaPrimeiro.slice(0, 7))
+    const resumo = relatorio.sellers.find((s) => s.sellerId === sellerId)
+    return HttpResponse.json(resumo)
   }),
 ]

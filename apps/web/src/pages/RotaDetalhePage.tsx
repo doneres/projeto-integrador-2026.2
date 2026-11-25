@@ -1,5 +1,6 @@
 import type { Outcome, RouteVisit } from '@axis/contracts'
 import { Link, useLocation, useParams } from 'react-router'
+import { IndicadorDeFrescor } from '../components/ui/IndicadorDeFrescor'
 import { progressoDaRota, ROTULO_VISITA, resumoDoProgresso } from '../features/rotas/progresso'
 import { useRota, useVendedores } from '../features/rotas/queries'
 import { formatarData, formatarHora } from '../lib/datas'
@@ -36,7 +37,7 @@ function CheckIn({ visita }: { visita: RouteVisit }) {
   return <span>{hora}</span>
 }
 
-/** Visitas de uma rota na ordem, com o estado de cada uma (#39). A #62 deixa esta tela ao vivo. */
+/** Visitas de uma rota na ordem, com o estado e as Flags de auditoria ao vivo (#39, #62). */
 export function RotaDetalhePage() {
   const { id } = useParams()
   const rota = useRota(id)
@@ -46,7 +47,7 @@ export function RotaDetalhePage() {
   if (rota.isPending) {
     return <p className="text-sm text-text-muted">Carregando rota...</p>
   }
-  if (rota.isError) {
+  if (rota.isError && !rota.data) {
     return (
       <div role="alert" className="flex flex-wrap items-center gap-3 text-sm">
         <span>{mensagemDeErro(rota.error)}</span>
@@ -58,7 +59,11 @@ export function RotaDetalhePage() {
   }
 
   const { data } = rota
+  if (!data) {
+    return null
+  }
   const vendedor = vendedores.data?.items.find((v) => v.id === data.sellerId)?.name ?? 'Vendedor'
+  const progresso = progressoDaRota(data.visits)
 
   return (
     <div className="flex flex-col gap-4">
@@ -75,14 +80,29 @@ export function RotaDetalhePage() {
           <h2 className="text-lg font-medium">
             {vendedor} · {formatarData(data.date)}
           </h2>
-          <p className="text-sm text-text-muted">
-            {resumoDoProgresso(progressoDaRota(data.visits))}
+          <p className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
+            <span>{resumoDoProgresso(progresso)}</span>
+            {progresso.foraDoRaio > 0 && (
+              <span className="rounded border border-erro px-1.5 py-0.5 text-xs font-medium text-erro">
+                {progresso.foraDoRaio}{' '}
+                {progresso.foraDoRaio === 1 ? 'flag fora do raio' : 'flags fora do raio'}
+              </span>
+            )}
           </p>
         </div>
         <Link to={`/rotas?date=${data.date}`} className="text-sm underline">
           Voltar para as rotas do dia
         </Link>
       </div>
+
+      <IndicadorDeFrescor
+        atualizadoEm={rota.dataUpdatedAt}
+        atualizando={rota.isFetching}
+        comErro={rota.isError}
+        onAtualizar={() => {
+          rota.refetch()
+        }}
+      />
 
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full min-w-[720px] text-left text-sm">

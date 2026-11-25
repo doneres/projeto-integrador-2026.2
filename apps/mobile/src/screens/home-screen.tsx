@@ -1,7 +1,9 @@
+import { router } from 'expo-router'
 import { useEffect } from 'react'
 import { AccessibilityInfo, ActivityIndicator, ScrollView, Text, View } from 'react-native'
 import { Button } from '@/components/button'
 import { Notice } from '@/components/notice'
+import { RouteFreshness } from '@/components/route-freshness'
 import { VisitRow } from '@/components/visit-row'
 import { useSession } from '@/hooks/session'
 import { useTodayRoute } from '@/hooks/use-today-route'
@@ -12,7 +14,7 @@ const EMPTY_MESSAGE = 'Sem rota hoje. Quando o Coordenador montar a sua rota, el
 
 export function HomeScreen() {
   const { state: session, signOut } = useSession()
-  const { state, retry } = useTodayRoute()
+  const { state, updatedAt, refreshing, refreshError, refresh, retry } = useTodayRoute()
   const name = session.status === 'signedIn' ? session.session.user.name : null
 
   // O VoiceOver ignora accessibilityLiveRegion, que só vale no Android: anunciamos à mão.
@@ -32,6 +34,15 @@ export function HomeScreen() {
       <Text accessibilityRole="header" className="text-xl font-semibold text-text">
         Rota do dia
       </Text>
+
+      {updatedAt && (state.status === 'ready' || state.status === 'empty') ? (
+        <RouteFreshness
+          updatedAt={updatedAt}
+          refreshing={refreshing}
+          error={refreshError}
+          onRefresh={refresh}
+        />
+      ) : null}
 
       {state.status === 'loading' ? (
         <View
@@ -69,7 +80,14 @@ export function HomeScreen() {
         ? state.route.visits.map((visit) => <VisitRow key={visit.id} visit={visit} />)
         : null}
 
-      <View className="mt-4">
+      <View className="mt-4 gap-3">
+        <Button
+          title="Minhas prospecções"
+          variant="secondary"
+          accessibilityLabel="Ver minhas prospecções"
+          accessibilityRole="button"
+          onPress={() => router.push('/prospeccoes')}
+        />
         <Button
           title="Sair"
           variant="secondary"

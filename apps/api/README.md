@@ -22,7 +22,7 @@ pnpm dev:api                                  # aplica as migrations e escuta em
 ```
 
 - Saúde: `GET http://localhost:3000/health`
-- Contas e parâmetros: `pnpm --filter @axis/api db:seed` cria uma conta por perfil, e com `--profile=demo` também duas Equipes, Clientes e rotas (veja [Seed e reset](#seed-e-reset))
+- Contas e parâmetros: `pnpm --filter @axis/api db:seed` cria uma conta por perfil, e com `--profile=demo` também duas Equipes, Clientes, rotas e dois meses de histórico (veja [Seed e reset](#seed-e-reset))
 - Documentação: `http://localhost:3000/docs/` (o JSON do OpenAPI está em `/docs/openapi.json`)
 
 Se a porta 5432 já estiver ocupada por outro Postgres, suba com `POSTGRES_PORT=5433 pnpm db:up` e troque a porta nas duas URLs do `.env`. Para parar o banco: `pnpm db:down` (os dados ficam no volume; `docker compose down -v` apaga tudo).
@@ -78,8 +78,9 @@ E também:
 - **Clientes:** 24 de carteira ativos em Goiânia (12 por Equipe), 2 Inativos, 4 Prospecções Pendentes de aprovação (3 na Equipe A e 1 na B), 2 aprovadas no mês corrente e 1 Rejeitada com motivo.
 - **Cliente de demonstração:** um por Equipe, na mesma coordenada, porque a rota só aceita Clientes da Equipe do Vendedor. A coordenada padrão fica em Goiânia. Para fazer um Check-in No Local de verdade, defina `SEED_DEMO_LATITUDE` e `SEED_DEMO_LONGITUDE` (as duas juntas) e rode o seed: isso vale também para o Cliente que já existe, sem precisar de reset. Sem as variáveis, ele continua onde está. Os outros Clientes não se movem. As rotas criadas a partir daí se medem da nova coordenada; as que já existiam não mudam, então, para refazê-las, defina as variáveis e rode `db:reset` antes do seed.
 - **Rotas de hoje e de amanhã**, mesmo em fim de semana, para os seis Vendedores ativos. As dos cinco Vendedores de teste nascem 100 % Pendentes e começam pelo Cliente de demonstração, seguindo por Clientes a mais de 200 m dele, do mais perto para o mais longe. A de hoje do Bruno tem duas Visitas Concluídas, uma Em andamento e o resto Pendente.
+- **Histórico executado** nos dias úteis (segunda a sexta, sem feriados) do mês anterior inteiro e do mês corrente até ontem, para os seis Vendedores ativos: cinco Visitas por dia, todas com Check-in e Check-out, entre Clientes ativos de carteira da Equipe (o de demonstração fica de fora, porque a coordenada dele pode mudar). Os Desfechos ficam perto de 55 % venda realizada, 25 % apenas auditoria, 10 % cliente fechado e 10 % não realizada, os dois últimos com justificativa. Cerca de 8 % dos Check-ins ficam Fora do Raio, com justificativa, e viram Flag de auditoria; os demais são No Local, dentro do raio dos Parâmetros e com precisão de até 50 m. A distância é medida da coordenada do Cliente com o mesmo helper da API (`src/geo`), e a justificativa do Desfecho segue o estado derivado (`visitStatusOf`). Cada dia de cada Vendedor sai da matrícula e da data, então uma data que já tem rota nunca é refeita.
 
-As datas saem do dia da execução no fuso America/Sao_Paulo, e o resto vem de um gerador com semente fixa: os Clientes e a ordem das rotas são os mesmos em toda execução. A massa é fictícia: nomes Exemplo ou Modelo (fora a Maria, a mesma do mock do web), e-mails em `axis.example` e CNPJs alfanuméricos gerados, que não coincidem com nenhum CNPJ numérico já emitido. Histórico, Pedidos, Comodatos e Metas entram no seed junto com as tabelas deles.
+As datas saem do dia da execução no fuso America/Sao_Paulo, e o resto vem de um gerador com semente fixa: os Clientes e a ordem das rotas são os mesmos em toda execução. A massa é fictícia: nomes Exemplo ou Modelo (fora a Maria, a mesma do mock do web), e-mails em `axis.example` e CNPJs alfanuméricos gerados, que não coincidem com nenhum CNPJ numérico já emitido. Pedidos, Comodatos e Metas entram no seed junto com as tabelas deles.
 
 ### Em dev
 
@@ -91,7 +92,7 @@ pnpm --filter @axis/api db:reset                 # zera os dados, sem confirmaç
 
 O banco precisa estar migrado: suba a API ao menos uma vez antes do primeiro seed.
 
-**As rotas não andam sozinhas.** Rode o seed demo no dia em que for usar: em um dia posterior, ele acrescenta as datas que faltam, sem refazer as que já existem. Uma rota de teste em que alguém já fez Check-in continua como está; para voltar ao estado inicial entre rodadas de teste, use `db:reset` e `db:seed --profile=demo`. O mesmo vale ao virar o mês: as Prospecções aprovadas guardam o mês em que foram criadas, e a Visita Em andamento de um dia anterior continua aberta até o reset.
+**As rotas não andam sozinhas.** Rode o seed demo no dia em que for usar: em um dia posterior, ele acrescenta as datas que faltam (as rotas novas e os dias úteis novos do histórico), sem refazer as que já existem. Por isso, a rota que foi a de "hoje" numa execução anterior entra no histórico como ficou, sem ser executada pelo seed. Uma rota de teste em que alguém já fez Check-in continua como está; para voltar ao estado inicial entre rodadas de teste, use `db:reset` e `db:seed --profile=demo`. O mesmo vale ao virar o mês: as Prospecções aprovadas guardam o mês em que foram criadas, e a Visita Em andamento de um dia anterior continua aberta até o reset.
 
 - **O seed pode rodar de novo.** Ele só cria o que falta e não mexe no que já existe: um raio ajustado, uma senha trocada e uma conta desativada continuam como estão. Por isso, trocar uma variável de senha não muda a senha de uma conta existente. Para recomeçar do zero: `db:reset` e depois `db:seed`.
 - **O reset** apaga os dados de todas as tabelas, mas mantém as tabelas e o histórico das migrations.
@@ -126,6 +127,7 @@ Cuidados:
 
 - **Escopo por perfil** ([`src/access/scope.ts`](./src/access/scope.ts)): o Vendedor lê só as próprias rotas e os clientes delas (mais as prospecções que ele cadastrou); o Coordenador, a sua Equipe; o Diretor, tudo; o Administrador recebe `403 SEM_PERMISSAO`. Recurso fora do escopo responde `404`, igual a um que não existe.
 - `GET /v1/routes/today` é a tela do dia do Vendedor: a rota de hoje (data de calendário em America/Sao_Paulo) com as Visitas pela `position`, o `status` derivado de cada uma e o Cliente. Sem rota no dia, `404 SEM_ROTA_HOJE`. `GET /v1/routes/{id}` e `GET /v1/routes` servem à gestão.
+- `GET /v1/sync/snapshot` (só Vendedor) é o snapshot do app (#27): as rotas de hoje e de amanhã (cada Visita com o Cliente), o raio do Check-in e as Prospecções que o próprio Vendedor cadastrou, com o estado e, se Rejeitada, o motivo. É sempre completo, e dia sem rota não é erro (a lista vem sem ele). Comodatos e Produtos entram quando essas tabelas existirem.
 - O estado da Visita (Pendente, Em andamento, Concluída, Não realizada) não é coluna: vem de `visitStatusOf`, de `@axis/contracts`.
 - `GET /v1/customers` pagina e aceita `search` (nome fantasia, razão social ou CPF/CNPJ), `status`, `origin`, `district`, `sortBy` e `order`. Só o Coordenador cadastra (`POST`), edita (`PUT`) e inativa ou reativa (`PATCH .../status`) clientes da própria Equipe, sempre com coordenadas. Não existe exclusão.
 - `buildApp` aceita `now`, um relógio injetável: os testes o usam para provar o corte do dia em São Paulo.
