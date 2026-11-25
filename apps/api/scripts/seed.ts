@@ -27,6 +27,7 @@ async function main() {
       console.log(`Rotas criadas: ${report.routesCreated}`)
       console.log(`Produtos criados: ${report.productsCreated}`)
       console.log(`Pedidos criados: ${report.ordersCreated}`)
+      console.log(`Metas criadas: ${report.goalsCreated}`)
       console.log(
         `Histórico: ${report.historyRoutesCreated} rotas e ${report.historyVisitsCreated} Visitas criadas`,
       )

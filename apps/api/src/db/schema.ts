@@ -301,3 +301,35 @@ export const orderItems = pgTable(
     check('order_item_price_not_negative', sql`${table.unitPriceCents} >= 0`),
   ],
 )
+
+/**
+ * Meta mensal de um Vendedor, definida pelo Diretor. Nulo em um alvo = "sem meta" naquele
+ * indicador. O realizado e o Score não são gravados: saem das tabelas de Pedido, Visita e Cliente
+ * na leitura.
+ */
+export const goals = pgTable(
+  'goal',
+  {
+    id: uuid().primaryKey(),
+    sellerId: uuid()
+      .notNull()
+      .references(() => users.id),
+    /** Primeiro dia do mês ("2026-11-01"). */
+    month: date({ mode: 'string' }).notNull(),
+    revenueTargetCents: integer(),
+    visitsTarget: integer(),
+    newCustomersTarget: integer(),
+    setById: uuid()
+      .notNull()
+      .references(() => users.id),
+    ...timestamps,
+  },
+  (table) => [
+    unique('goal_seller_month_unique').on(table.sellerId, table.month),
+    check('goal_month_is_first_day', sql`extract(day from ${table.month}) = 1`),
+    check(
+      'goal_targets_not_negative',
+      sql`coalesce(${table.revenueTargetCents}, 0) >= 0 AND coalesce(${table.visitsTarget}, 0) >= 0 AND coalesce(${table.newCustomersTarget}, 0) >= 0`,
+    ),
+  ],
+)

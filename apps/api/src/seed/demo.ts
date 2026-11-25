@@ -22,6 +22,7 @@ import {
   TEST_SELLERS,
   type Team,
 } from './demo-data'
+import { seedGoals } from './goals'
 import { type HistorySeller, seedHistory } from './history'
 import { seedOrders } from './orders'
 
@@ -172,11 +173,13 @@ export async function seedDemo(db: Database, { passwords, now, demoLocation }: D
   })
 
   const orders = await seedOrders(db, now)
+  const goalsReport = await seedGoals(db, now)
 
   return {
     ...report,
     productsCreated: orders.productsCreated,
     ordersCreated: orders.ordersCreated,
+    goalsCreated: goalsReport.goalsCreated,
     customersCreated: missing.length,
     routesCreated,
     historyRoutesCreated: history.routesCreated,
