@@ -193,12 +193,8 @@
           "name": "customer_coordinator_id_user_id_fk",
           "tableFrom": "customer",
           "tableTo": "user",
-          "columnsFrom": [
-            "coordinator_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["coordinator_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -206,12 +202,8 @@
           "name": "customer_created_by_id_user_id_fk",
           "tableFrom": "customer",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -219,12 +211,8 @@
           "name": "customer_approved_by_id_user_id_fk",
           "tableFrom": "customer",
           "tableTo": "user",
-          "columnsFrom": [
-            "approved_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["approved_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -311,12 +299,8 @@
           "name": "order_item_order_id_sales_order_id_fk",
           "tableFrom": "order_item",
           "tableTo": "sales_order",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -324,12 +308,8 @@
           "name": "order_item_product_id_product_id_fk",
           "tableFrom": "order_item",
           "tableTo": "product",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -339,10 +319,7 @@
         "order_item_order_product_unique": {
           "name": "order_item_order_product_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "order_id",
-            "product_id"
-          ]
+          "columns": ["order_id", "product_id"]
         }
       },
       "policies": {},
@@ -434,9 +411,7 @@
         "product_sku_unique": {
           "name": "product_sku_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "sku"
-          ]
+          "columns": ["sku"]
         }
       },
       "policies": {},
@@ -501,12 +476,8 @@
           "name": "route_seller_id_user_id_fk",
           "tableFrom": "route",
           "tableTo": "user",
-          "columnsFrom": [
-            "seller_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["seller_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -514,12 +485,8 @@
           "name": "route_created_by_id_user_id_fk",
           "tableFrom": "route",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -529,10 +496,7 @@
         "route_seller_date_unique": {
           "name": "route_seller_date_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "seller_id",
-            "date"
-          ]
+          "columns": ["seller_id", "date"]
         }
       },
       "policies": {},
@@ -613,12 +577,8 @@
           "name": "sales_order_visit_id_visit_id_fk",
           "tableFrom": "sales_order",
           "tableTo": "visit",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -691,12 +651,8 @@
           "name": "system_settings_updated_by_id_user_id_fk",
           "tableFrom": "system_settings",
           "tableTo": "user",
-          "columnsFrom": [
-            "updated_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["updated_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -798,12 +754,8 @@
           "name": "user_coordinator_id_user_id_fk",
           "tableFrom": "user",
           "tableTo": "user",
-          "columnsFrom": [
-            "coordinator_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["coordinator_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -813,16 +765,12 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "user_registration_unique": {
           "name": "user_registration_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "registration"
-          ]
+          "columns": ["registration"]
         }
       },
       "policies": {},
@@ -990,12 +938,8 @@
           "name": "visit_route_id_route_id_fk",
           "tableFrom": "visit",
           "tableTo": "route",
-          "columnsFrom": [
-            "route_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["route_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1003,12 +947,8 @@
           "name": "visit_customer_id_customer_id_fk",
           "tableFrom": "visit",
           "tableTo": "customer",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1018,10 +958,7 @@
         "visit_route_customer_unique": {
           "name": "visit_route_customer_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "route_id",
-            "customer_id"
-          ]
+          "columns": ["route_id", "customer_id"]
         }
       },
       "policies": {},
