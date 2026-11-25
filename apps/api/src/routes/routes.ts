@@ -1,4 +1,6 @@
 import {
+  createRouteBodySchema,
+  type ErroDeCampo,
   idSchema,
   pageOf,
   problemaSchema,
@@ -6,21 +8,24 @@ import {
   routeFiltersSchema,
   routeSchema,
 } from '@axis/contracts'
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+import { v7 as uuidv7 } from 'uuid'
 import { z } from 'zod'
 import { requireRole, routeScope } from '../access/scope'
-import { customers, routes, visits } from '../db/schema'
+import { isUniqueViolation } from '../db/errors'
+import { customers, routes, users, visits } from '../db/schema'
 import { ApiError } from '../errors'
 import { calendarDateInSaoPaulo } from '../time/calendar-date'
 import { toRoute, toRouteVisit } from './to-route'
 
 /**
- * Leitura de rotas. `/today` é a tela do dia do Vendedor; `/{id}` e a listagem servem à gestão,
+ * Rotas de trabalho. `/today` é a tela do dia do Vendedor; `/{id}` e a listagem servem à gestão,
  * sempre dentro do escopo do perfil (Vendedor: as suas; Coordenador: a Equipe; Diretor: todas).
+ * O Coordenador monta a rota com o POST.
  */
-export async function routeReadingRoutes(app: FastifyInstance) {
+export async function routeRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
   const security = [{ bearerAuth: [] }]
 
@@ -131,6 +136,93 @@ export async function routeReadingRoutes(app: FastifyInstance) {
           .offset((page - 1) * perPage),
       ])
       return { items: rows.map(toRoute), total, page, perPage }
+    },
+  )
+
+  typed.post(
+    '/v1/routes',
+    {
+      onRequest: app.authenticate,
+      schema: {
+        tags: ['routes'],
+        summary: 'Monta a rota de um Vendedor da Equipe para uma data',
+        description:
+          'Só o Coordenador. Cria a rota e uma Visita Pendente por Cliente, com a posição na ordem de `customerIds`. 409 ROTA_JA_EXISTE se o Vendedor já tem rota na data; 422 se o Vendedor ou algum Cliente não é da Equipe, ou se o Cliente não está ativo.',
+        security,
+        body: createRouteBodySchema,
+        response: {
+          201: routeDetailSchema,
+          401: problemaSchema,
+          403: problemaSchema,
+          409: problemaSchema,
+          422: problemaSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      requireRole(request.user, 'coordinator')
+      const { sellerId, date, customerIds } = request.body
+      const coordinatorId = request.user.id
+
+      const [seller] = await app.db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, sellerId),
+            eq(users.role, 'seller'),
+            eq(users.active, true),
+            eq(users.coordinatorId, coordinatorId),
+          ),
+        )
+      const found = await app.db
+        .select({ id: customers.id })
+        .from(customers)
+        .where(
+          and(
+            inArray(customers.id, customerIds),
+            eq(customers.coordinatorId, coordinatorId),
+            eq(customers.status, 'active'),
+          ),
+        )
+
+      const errors: ErroDeCampo[] = []
+      if (!seller) {
+        errors.push({ campo: 'sellerId', mensagem: 'O Vendedor não é ativo da sua Equipe' })
+      }
+      if (found.length !== customerIds.length) {
+        errors.push({
+          campo: 'customerIds',
+          mensagem: 'Há Cliente que não é ativo da sua Equipe',
+        })
+      }
+      if (errors.length > 0) {
+        throw new ApiError(422, 'VALIDACAO', 'Dados inválidos', errors)
+      }
+
+      try {
+        const route = await app.db.transaction(async (tx) => {
+          const [created] = await tx
+            .insert(routes)
+            .values({ id: uuidv7(), sellerId, date, createdById: coordinatorId })
+            .returning()
+          await tx.insert(visits).values(
+            customerIds.map((customerId, index) => ({
+              id: uuidv7(),
+              routeId: (created as typeof routes.$inferSelect).id,
+              customerId,
+              position: index + 1,
+            })),
+          )
+          return created as typeof routes.$inferSelect
+        })
+        return reply.code(201).send(await detailOf(route))
+      } catch (error) {
+        if (isUniqueViolation(error, 'route_seller_date_unique')) {
+          throw new ApiError(409, 'ROTA_JA_EXISTE', 'O Vendedor já tem rota nesta data')
+        }
+        throw error
+      }
     },
   )
 }
