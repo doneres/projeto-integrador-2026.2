@@ -50,6 +50,13 @@
       "when": 1795646127898,
       "tag": "0006_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795646513149,
+      "tag": "0007_pos_audit",
+      "breakpoints": true
     }
   ]
 }

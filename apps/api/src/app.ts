@@ -17,6 +17,7 @@ import { goalRoutes } from './routes/goals'
 import { healthRoutes } from './routes/health'
 import { meRoutes } from './routes/me'
 import { orderRoutes } from './routes/orders'
+import { posRoutes } from './routes/pos'
 import { productRoutes } from './routes/products'
 import { routeReadingRoutes } from './routes/routes'
 import { syncRoutes } from './routes/sync'
@@ -82,6 +83,7 @@ export async function buildApp({
   await app.register(productRoutes)
   await app.register(orderRoutes)
   await app.register(goalRoutes)
+  await app.register(posRoutes)
   await app.register(routeReadingRoutes)
   await app.register(syncRoutes)
 

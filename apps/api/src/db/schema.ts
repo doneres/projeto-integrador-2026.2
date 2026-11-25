@@ -2,9 +2,11 @@
 // snake_case no banco, camelCase no código. As demais entram junto com as telas que as usam.
 import {
   type CheckInStatus,
+  type Condition,
   type CustomerOrigin,
   type CustomerStatus,
   checkInStatusSchema,
+  conditionSchema,
   customerOriginSchema,
   customerStatusSchema,
   type Outcome,
@@ -331,5 +333,92 @@ export const goals = pgTable(
       'goal_targets_not_negative',
       sql`coalesce(${table.revenueTargetCents}, 0) >= 0 AND coalesce(${table.visitsTarget}, 0) >= 0 AND coalesce(${table.newCustomersTarget}, 0) >= 0`,
     ),
+  ],
+)
+
+/** Tipo de Material de PDV do catálogo do Administrador (geladeira, freezer, banner...). */
+export const posMaterials = pgTable('pos_material', {
+  id: uuid().primaryKey(),
+  name: text().notNull(),
+  category: text().notNull(),
+  active: boolean().notNull().default(true),
+  ...timestamps,
+})
+
+/** Comodato: um Material de PDV em um Cliente. Encerrar preenche `endedAt`; nunca se apaga. */
+export const loans = pgTable(
+  'loan',
+  {
+    id: uuid().primaryKey(),
+    materialId: uuid()
+      .notNull()
+      .references(() => posMaterials.id),
+    customerId: uuid()
+      .notNull()
+      .references(() => customers.id),
+    /** Patrimônio ou número de série. */
+    serialNumber: text().notNull(),
+    installedAt: date({ mode: 'string' }).notNull(),
+    /** Nulo = ativo. */
+    endedAt: date({ mode: 'string' }),
+    ...timestamps,
+  },
+  (table) => [
+    index('loan_customer_idx').on(table.customerId),
+    check(
+      'loan_ended_after_installed',
+      sql`${table.endedAt} IS NULL OR ${table.endedAt} >= ${table.installedAt}`,
+    ),
+  ],
+)
+
+/**
+ * Auditoria de PDV: uma linha por Comodato auditado na Visita. Sem cabeçalho: "a auditoria foi
+ * feita" = existem linhas na Visita. A auditoria não altera o Comodato.
+ */
+export const auditItems = pgTable(
+  'audit_item',
+  {
+    id: uuid().primaryKey(),
+    visitId: uuid()
+      .notNull()
+      .references(() => visits.id),
+    loanId: uuid()
+      .notNull()
+      .references(() => loans.id),
+    condition: text({ enum: conditionSchema.options as [Condition, ...Condition[]] }).notNull(),
+    /** Obrigatória quando o item está Ausente. */
+    justification: text(),
+    occurredAt: timestamp({ withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique('audit_item_visit_loan_unique').on(table.visitId, table.loanId),
+    check(
+      'audit_item_missing_justified',
+      sql`${table.condition} <> 'missing' OR ${table.justification} IS NOT NULL`,
+    ),
+  ],
+)
+
+/**
+ * Foto da Visita, com o arquivo no armazenamento externo (`storageKey`). A RN03 exige ao menos
+ * uma por Visita auditada e uma por item Avariado ou que Necessita Manutenção.
+ */
+export const photos = pgTable(
+  'photo',
+  {
+    id: uuid().primaryKey(),
+    visitId: uuid()
+      .notNull()
+      .references(() => visits.id),
+    auditItemId: uuid().references(() => auditItems.id),
+    storageKey: text().notNull(),
+    takenAt: timestamp({ withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    index('photo_visit_idx').on(table.visitId),
+    index('photo_audit_item_idx').on(table.auditItemId),
   ],
 )

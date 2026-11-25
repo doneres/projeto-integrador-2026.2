@@ -3,11 +3,13 @@ import { v7 as uuidv7 } from 'uuid'
 import type { Database } from '../db/client'
 import { customers, routes, visits } from '../db/schema'
 import { type Coordinates, distanceInMeters } from '../geo/distance'
+import type { PhotoStorage } from '../storage/photo-storage'
 import {
   addCalendarDays,
   calendarDateInSaoPaulo,
   startOfDayInSaoPaulo,
 } from '../time/calendar-date'
+import { seedAudit } from './audit'
 import { ensureUser, type SeedPasswords, seedBase } from './base'
 import {
   COORDINATOR_B,
@@ -32,6 +34,8 @@ export type DemoOptions = {
   now: Date
   /** Sobrescreve a coordenada do Cliente de demonstração, inclusive se ele já existir. */
   demoLocation?: Coordinates | undefined
+  /** Para onde vão os arquivos das Fotos (disco em dev, Cloudinary em produção). */
+  storage: PhotoStorage
 }
 
 const WORK_WINDOW_MS = 4 * 60 * 60 * 1000
@@ -47,7 +51,10 @@ type CustomerRow = typeof customers.$inferSelect
  * preserva o que foi feito na demonstração; para recomeçar: reset + seed. A exceção é a coordenada
  * pedida em `demoLocation`, que vale também para o Cliente de demonstração que já existe.
  */
-export async function seedDemo(db: Database, { passwords, now, demoLocation }: DemoOptions) {
+export async function seedDemo(
+  db: Database,
+  { passwords, now, demoLocation, storage }: DemoOptions,
+) {
   const { coordinator: coordinatorA, seller: showcase, ...report } = await seedBase(db, passwords)
 
   const coordinatorB = await ensureUser(db, report, {
@@ -173,6 +180,7 @@ export async function seedDemo(db: Database, { passwords, now, demoLocation }: D
   })
 
   const orders = await seedOrders(db, now)
+  const audit = await seedAudit(db, storage, now)
   const goalsReport = await seedGoals(db, now)
 
   return {
@@ -180,6 +188,10 @@ export async function seedDemo(db: Database, { passwords, now, demoLocation }: D
     productsCreated: orders.productsCreated,
     ordersCreated: orders.ordersCreated,
     goalsCreated: goalsReport.goalsCreated,
+    materialsCreated: audit.materialsCreated,
+    loansCreated: audit.loansCreated,
+    auditItemsCreated: audit.auditItemsCreated,
+    photosCreated: audit.photosCreated,
     customersCreated: missing.length,
     routesCreated,
     historyRoutesCreated: history.routesCreated,
