@@ -87,14 +87,20 @@ export function useSellerScore() {
   const readRef = useRef(read)
   readRef.current = read
 
-  // Abrir a tela.
+  // Abrir a tela. Se o Vendedor da sessão mudar com a tela montada, o valor do anterior sai e a
+  // leitura recomeça: o Score de um Vendedor nunca fica na tela de outro.
   useEffect(() => {
+    const cached = sellerId ? data.scores.cached(sellerId) : null
+    hasData.current = cached !== null
+    setState(cached ? { status: 'ready', summary: cached.summary } : { status: 'loading' })
+    setUpdatedAt(cached?.readAt ?? null)
+    setRefreshError(null)
     readRef.current()
     return () => {
       latest.current++
       inFlight.current = false
     }
-  }, [])
+  }, [data, sellerId])
 
   // Voltar ao app com rede relê; sem rede, fica o que já está na tela.
   useEffect(() => {

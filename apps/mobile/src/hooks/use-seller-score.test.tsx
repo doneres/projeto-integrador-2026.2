@@ -135,6 +135,30 @@ describe('useSellerScore: leitura do servidor', () => {
     expect(second.result.current.refreshing).toBe(true)
     expect(second.result.current.updatedAt).toEqual(at(9, 0))
   })
+
+  it('se o Vendedor da sessão muda com a tela montada, o Score do anterior sai', async () => {
+    const brunoId = '0198f2a0-7c1e-7000-8000-0000000000bb'
+    const read: Read = jest
+      .fn()
+      .mockResolvedValueOnce(scoreSummary({ score: 84 }))
+      .mockReturnValueOnce(new Promise(() => {}))
+    const clock = fakeClock(at(9, 0))
+    const data = createFakeAppData(undefined, undefined, {
+      now: clock.now,
+      scores: fakeScores(read, clock.now),
+    })
+    await data.sessions.save(sellerSession())
+    const { result } = await renderHook(
+      () => ({ score: useSellerScore(), session: useSession() }),
+      { wrapper: wrapperFor(data) },
+    )
+    await waitFor(() => expect(result.current?.score.state.status).toBe('ready'))
+
+    await act(async () => result.current.session.signIn(sellerSession({ id: brunoId })))
+
+    expect(result.current.score.state).toEqual({ status: 'loading' })
+    expect(result.current.score.updatedAt).toBeNull()
+  })
 })
 
 describe('useSellerScore: fila de envio', () => {
