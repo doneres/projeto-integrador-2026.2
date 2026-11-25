@@ -12,6 +12,7 @@ import { expect } from 'vitest'
 import { buildApp } from '../../src/app'
 import { seedDemo } from '../../src/seed/demo'
 import { loadDatabaseTarget, loadSeedPasswords } from '../../src/seed/env'
+import type { PhotoStorage } from '../../src/storage/photo-storage'
 import { TEST_JWT_SECRET } from './config'
 import { createTestDatabase } from './database'
 
@@ -31,10 +32,23 @@ export const passwords = loadSeedPasswords(
 const customerPage = pageOf(customerSchema)
 const routePage = pageOf(routeSchema)
 
+/** Armazenamento em memória: guarda as chaves enviadas, sem tocar no disco. */
+export function createMemoryStorage(): PhotoStorage & { keys: Map<string, number> } {
+  const keys = new Map<string, number>()
+  return {
+    keys,
+    async put(key, bytes) {
+      keys.set(key, bytes.byteLength)
+      return key
+    },
+  }
+}
+
 /** Um banco e uma API de teste, com o relógio dos dois sob controle do teste. */
 export async function harness(initialClock: Date) {
   const testDb = await createTestDatabase()
   const state = { clock: initialClock }
+  const storage = createMemoryStorage()
   const app = await buildApp({
     db: testDb.db,
     auth: { jwtSecret: TEST_JWT_SECRET, loginRateLimit: { max: 10_000, windowMs: 60_000 } },
@@ -90,6 +104,7 @@ export async function harness(initialClock: Date) {
     ...testDb,
     app,
     state,
+    storage,
     login,
     sessionOf,
     get,
@@ -97,7 +112,7 @@ export async function harness(initialClock: Date) {
     routesOf,
     routeOn,
     seed: (now: Date, demoLocation?: { latitude: number; longitude: number }) =>
-      seedDemo(testDb.db, { passwords, now, demoLocation }),
+      seedDemo(testDb.db, { passwords, now, demoLocation, storage }),
     finish: async () => {
       await app.close()
       await testDb.drop()

@@ -6,6 +6,7 @@ import { createDatabase } from '../src/db/client'
 import { type SeedReport, seedBase } from '../src/seed/base'
 import { seedDemo } from '../src/seed/demo'
 import { loadDatabaseTarget, loadDemoLocation, loadSeedPasswords } from '../src/seed/env'
+import { createPhotoStorageFromEnv } from '../src/storage/photo-storage'
 
 async function main() {
   const { values } = parseArgs({ options: { profile: { type: 'string', default: 'base' } } })
@@ -21,10 +22,21 @@ async function main() {
   const { db, close } = createDatabase(target.url)
   try {
     if (values.profile === 'demo') {
-      const report = await seedDemo(db, { passwords, now: new Date(), demoLocation })
+      const report = await seedDemo(db, {
+        passwords,
+        now: new Date(),
+        demoLocation,
+        storage: createPhotoStorageFromEnv(process.env),
+      })
       printAccounts(report)
       console.log(`Clientes criados: ${report.customersCreated}`)
       console.log(`Rotas criadas: ${report.routesCreated}`)
+      console.log(`Produtos criados: ${report.productsCreated}`)
+      console.log(`Pedidos criados: ${report.ordersCreated}`)
+      console.log(`Metas criadas: ${report.goalsCreated}`)
+      console.log(
+        `Materiais, Comodatos, itens de Auditoria e Fotos criados: ${report.materialsCreated}, ${report.loansCreated}, ${report.auditItemsCreated}, ${report.photosCreated}`,
+      )
       console.log(
         `Histórico: ${report.historyRoutesCreated} rotas e ${report.historyVisitsCreated} Visitas criadas`,
       )

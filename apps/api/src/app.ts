@@ -13,8 +13,12 @@ import type { Database } from './db/client'
 import { registerErrorHandling } from './errors'
 import { authRoutes } from './routes/auth'
 import { customerRoutes } from './routes/customers'
+import { goalRoutes } from './routes/goals'
 import { healthRoutes } from './routes/health'
 import { meRoutes } from './routes/me'
+import { orderRoutes } from './routes/orders'
+import { posRoutes } from './routes/pos'
+import { productRoutes } from './routes/products'
 import { routeRoutes } from './routes/routes'
 import { syncRoutes } from './routes/sync'
 import { userRoutes } from './routes/users'
@@ -77,6 +81,10 @@ export async function buildApp({
   await app.register(authRoutes, auth)
   await app.register(meRoutes)
   await app.register(customerRoutes)
+  await app.register(productRoutes)
+  await app.register(orderRoutes)
+  await app.register(goalRoutes)
+  await app.register(posRoutes)
   await app.register(routeRoutes)
   await app.register(syncRoutes)
   await app.register(userRoutes)
