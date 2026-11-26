@@ -1,5 +1,8 @@
 module.exports = {
   preset: 'jest-expo',
+  // O primeiro render de cada arquivo paga a importação a frio (NativeWind, expo-router, lucide)
+  // e, no runner do CI com workers em paralelo, passa dos 5 s padrão sem haver nada quebrado.
+  testTimeout: 20000,
   moduleNameMapper: {
     // O CSS do NativeWind só importa para o Metro; no Jest vira um módulo vazio.
     '\\.css$': '<rootDir>/test/empty-module.js',
