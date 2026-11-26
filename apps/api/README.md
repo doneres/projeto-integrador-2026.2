@@ -82,6 +82,8 @@ E também:
 
 As datas saem do dia da execução no fuso America/Sao_Paulo, e o resto vem de um gerador com semente fixa: os Clientes e a ordem das rotas são os mesmos em toda execução. A massa é fictícia: nomes Exemplo ou Modelo (fora a Maria, a mesma do mock do web), e-mails em `axis.example` e CNPJs alfanuméricos gerados, que não coincidem com nenhum CNPJ numérico já emitido. Pedidos, Comodatos e Metas entram no seed junto com as tabelas deles.
 
+O passo a passo de cada cenário da apresentação (modo avião, Check-in No Local e Fora do Raio, aprovação de Prospecção, "o servidor vence" e o Score depois de um Pedido), ligado a estes dados, está no [roteiro de demonstração](../../docs/09-roteiro-demonstracao/README.md). Os mesmos e-mails e matrículas aparecem no [README do app](../mobile/README.md#contas-do-seed).
+
 ### Em dev
 
 ```bash
