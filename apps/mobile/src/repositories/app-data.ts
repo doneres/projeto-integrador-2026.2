@@ -3,9 +3,11 @@ import { type ApiUrlSettings, createApiUrlSettings } from '@/services/api-url'
 import { type Connectivity, deviceConnectivity } from '@/services/connectivity'
 import { getEnv } from '@/services/env'
 import { type KeyValueStore, secureStore } from '@/services/key-value-store'
+import { createSendQueue, type SendQueue } from '@/services/send-queue'
 import { type AuthRepository, createAuthRepository } from './auth-repository'
 import { createProspectRepository, type ProspectRepository } from './prospect-repository'
 import { createRouteRepository, type RouteRepository } from './route-repository'
+import { createScoreRepository, type ScoreRepository } from './score-repository'
 import { createSessionRepository, type SessionRepository } from './session-repository'
 
 export type UnauthorizedListener = (token: string | null) => void
@@ -32,10 +34,14 @@ export type AppData = {
   auth: AuthRepository
   routes: RouteRepository
   prospects: ProspectRepository
+  /** Realizado e Score do mês do Vendedor, lidos do servidor (RF25). */
+  scores: ScoreRepository
   sessions: SessionRepository
   apiUrl: ApiUrlSettings
   /** Rede do aparelho: decide se voltar ao app já vale uma nova leitura. */
   connectivity: Connectivity
+  /** Estado da fila de envio: quando ela esvazia com sucesso, o Score é relido. */
+  sendQueue: SendQueue
   /** Relógio do app, para carimbar a hora da última leitura bem-sucedida. */
   now(): Date
   /**
@@ -50,6 +56,7 @@ type Deps = {
   fetch?: typeof fetch
   envApiUrl: () => string
   connectivity?: Connectivity
+  sendQueue?: SendQueue
   now?: () => Date
 }
 
@@ -58,6 +65,7 @@ export function createAppData({
   fetch,
   envApiUrl,
   connectivity = deviceConnectivity,
+  sendQueue = createSendQueue(),
   now = () => new Date(),
 }: Deps): AppData {
   const sessions = createSessionRepository(store)
@@ -74,9 +82,11 @@ export function createAppData({
     auth: createAuthRepository(api),
     routes: createRouteRepository(api),
     prospects: createProspectRepository(api),
+    scores: createScoreRepository(api, now),
     sessions,
     apiUrl,
     connectivity,
+    sendQueue,
     now,
     onUnauthorized: unauthorized.subscribe,
   }
