@@ -38,6 +38,7 @@ O sistema é dividido em duas frentes: um **painel web**, usado pela gestão par
 | [Modelo de Dados](./05-modelo-dados/README.md) | Entidades, atributos, estados e relacionamentos (decisão da issue #26) | ✅ Pronto |
 | [Fluxo de Trabalho](./06-fluxo-de-trabalho/README.md) | Como criar branch, commitar e abrir PR | ✅ Pronto |
 | [Protótipo Navegável](./08-prototipo/README.md) | Protótipo do app mobile no Figma e fluxo de navegação | ✅ Pronto |
+| [Roteiro de Demonstração](./09-roteiro-demonstracao/README.md) | Cenários da banca ligados aos dados do seed, reset + seed, plano B e regra de "tempo real" (spec #52) | Em andamento (falta ensaiar em Android real) |
 
 ## Como Contribuir com a Documentação
 

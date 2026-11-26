@@ -51,7 +51,22 @@ No Expo Go, `localhost` aponta para o próprio celular. Use o **IP da sua máqui
 - A sessão acaba ao **Sair**, em qualquer **401** de chamada autenticada (um 401 tardio de um token antigo não derruba uma sessão nova) e quando as 8 h vencem (com o app aberto ou depois de voltar do segundo plano).
 - O login espera até **90 s** pela resposta inteira (a API no Render Free dorme) e, passados 4 s sem resposta, mostra "Acordando o servidor…".
 - **Trocar a URL da API:** toque longo no logo AXIS da tela de login. A URL fica guardada no aparelho; "Usar a do app" volta para `EXPO_PUBLIC_API_URL`. Endereço `http://` mostra um aviso (a senha viaja sem criptografia): serve só para a rede local de desenvolvimento. Sem URL guardada nem de ambiente, o login manda o Vendedor para esse toque longo.
-- **Contas para testar:** com a API semeada por `db:seed --profile=demo` (veja [Seed e reset](../api/README.md#seed-e-reset)), as matrículas `2002` a `2006` têm a rota de hoje e a de amanhã 100 % Pendentes, começando pelo Cliente de demonstração, e a `2001` (`vendedor@axis.example`) tem a de hoje em andamento. A senha é a de `SEED_PASSWORD_SELLER`.
+
+## Contas do seed
+
+Com a API semeada por `db:seed --profile=demo` (veja [Seed e reset](../api/README.md#seed-e-reset)), estas são as contas. **O app só aceita Vendedores**; as demais entram no painel web. Entre com o e-mail ou a matrícula. A senha não está aqui nem no repositório: vem de `SEED_PASSWORD_SELLER` (todas as contas de Vendedor têm a mesma), e em `production` fica no gerenciador de senhas do grupo.
+
+| Vendedor | E-mail | Matrícula | Equipe | Rota de hoje e de amanhã |
+|---|---|---|---|---|
+| Bruno Exemplo (showcase) | `vendedor@axis.example` | `2001` | A | hoje em andamento (2 Concluídas, 1 Em andamento, o resto Pendente) |
+| Ana Exemplo | `vendedor.a2@axis.example` | `2002` | A | 100 % Pendentes |
+| Caio Exemplo | `vendedor.a3@axis.example` | `2003` | A | 100 % Pendentes |
+| Lia Modelo | `vendedor.b1@axis.example` | `2004` | B | 100 % Pendentes |
+| Davi Modelo | `vendedor.b2@axis.example` | `2005` | B | 100 % Pendentes |
+| Rita Modelo | `vendedor.b3@axis.example` | `2006` | B | 100 % Pendentes |
+| Otávio Exemplo | `vendedor.desativado@axis.example` | `2099` | A | conta desativada: não entra |
+
+Nas rotas de teste, a primeira Visita é o Cliente de demonstração da Equipe, no local da apresentação (para um Check-in No Local de verdade é preciso estar no ponto, com o APK num Android real: a RN01 recusa localização simulada). As contas de gestão (Coordenadores, Diretor e Administrador) estão na [tabela da API](../api/README.md#seed-e-reset), e o passo a passo de cada cenário está no [roteiro de demonstração](../../docs/09-roteiro-demonstracao/README.md).
 
 ## Rota do dia
 
